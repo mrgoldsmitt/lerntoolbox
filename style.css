@@ -1916,8 +1916,8 @@ body.light-mode .fc-list-item:hover {
 .burger-dropdown {
   position: absolute;
   top: 100%;
-  right: 0;
-  left: auto;
+  left: 0;
+  right: auto;
   margin-top: 0.5rem;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
@@ -1927,6 +1927,8 @@ body.light-mode .fc-list-item:hover {
   padding: 0.5rem 0;
   z-index: 2000;
   min-width: 220px;
+  max-width: calc(100vw - 20px);
+  box-sizing: border-box;
   display: none;
   flex-direction: column;
 }
@@ -1964,8 +1966,8 @@ body.light-mode .menu-separator {
   background: #e2e8f0;
 }
 
-/* Flashcards Menu specific alignment */
-#flashcards-menu {
+/* Account dropdown in header aligns to the right */
+#account-dropdown-menu {
   left: auto;
   right: 0;
 }

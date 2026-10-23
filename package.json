@@ -1,6 +1,6 @@
 {
   "name": "lerntoolbox",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "description": "Digitale Lernplattform für Schule und Unterricht (Mindmap, Kanban, Flashcards, Entschuldigungen, Digiboard)",
   "main": "script.js",
   "scripts": {

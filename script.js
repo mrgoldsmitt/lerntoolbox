@@ -1168,8 +1168,43 @@ function toggleBurgerMenu(menuId) {
     // Toggle
     if (menu.style.display === 'flex') {
         menu.style.display = 'none';
-    } else {
-        menu.style.display = 'flex';
+        return;
+    }
+
+    menu.style.display = 'flex';
+    adjustBurgerDropdownPosition(menu);
+}
+
+function adjustBurgerDropdownPosition(menu) {
+    if (!menu) return;
+
+    // Default: align left edge of menu with left edge of button (opens to the right)
+    menu.style.left = '0';
+    menu.style.right = 'auto';
+
+    const padding = 10;
+    const windowWidth = window.innerWidth;
+    const parent = menu.offsetParent || menu.parentElement;
+    const parentRect = parent ? parent.getBoundingClientRect() : { left: 0, right: windowWidth };
+    let rect = menu.getBoundingClientRect();
+
+    // If opening to the right overflows the window on the right:
+    if (rect.right > windowWidth - padding) {
+        // Try aligning right edge of menu with right edge of button (opens to the left)
+        menu.style.left = 'auto';
+        menu.style.right = '0';
+        rect = menu.getBoundingClientRect();
+
+        // If aligning right now causes it to overflow on the left:
+        if (rect.left < padding) {
+            const localLeft = padding - parentRect.left;
+            menu.style.left = `${localLeft}px`;
+            menu.style.right = 'auto';
+        }
+    } else if (rect.left < padding) {
+        const localLeft = padding - parentRect.left;
+        menu.style.left = `${localLeft}px`;
+        menu.style.right = 'auto';
     }
 }
 
@@ -1180,6 +1215,15 @@ window.addEventListener('click', (e) => {
             el.style.display = 'none';
         });
     }
+});
+
+// Reposition open menus on resize
+window.addEventListener('resize', () => {
+    document.querySelectorAll('.burger-dropdown').forEach(el => {
+        if (el.style.display === 'flex') {
+            adjustBurgerDropdownPosition(el);
+        }
+    });
 });
 
 

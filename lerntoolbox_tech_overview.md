@@ -12,7 +12,7 @@ tags:
   - domain/education
   - license/cc-by-nc-4.0
 type: web-application-architecture
-version: "0.10.2"
+version: "0.10.3"
 status: production-ready
 stack:
   frontend: "Vanilla HTML5, CSS3, JavaScript (SPA, PWA Offline-First)"
@@ -163,6 +163,10 @@ Wenn du als KI an diesem Repository arbeitest, halte dich an folgende Regeln:
 ---
 
 ## 9. Changelog
+
+### Version 0.10.3 (2026-10-23)
+- **Bugfix Kontextmenüs / Tool-Menüs**: Behebung des Fehlers, dass Menüs in Werkzeugen wie Mindmap und Flashcards zu weit links bzw. nach links geöffnet gerendert wurden. Menüs öffnen sich nun standardmäßig nach rechts und verfügen über eine dynamische Viewport-Begrenzung (`adjustBurgerDropdownPosition`), sodass Einträge auf Desktop und Mobilgeräten niemals abgeschnitten oder durch die Seitenleiste verdeckt werden.
+- **PWA-Cache**: Erhöhung des Cache-Namens im Service Worker auf `lerntoolbox-v23`.
 
 ### Version 0.10.2 (2026-10-23)
 - **Lizenzierung**: Offizielle Umstellung auf die freie [Creative Commons Namensnennung - Nicht-kommerziell 4.0 International Lizenz (CC BY-NC 4.0)](LICENSE) im Projekt, auf GitHub und in den Webseiten-Footern/Disclaimern.
