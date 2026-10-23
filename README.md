@@ -1,7 +1,7 @@
 # Lerntoolbox
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
-[![Release](https://img.shields.io/badge/Release-v0.10.1-green.svg)](https://github.com/mrgoldsmitt/lerntoolbox/releases)
+[![Release](https://img.shields.io/badge/Release-v0.10.2-green.svg)](https://github.com/mrgoldsmitt/lerntoolbox/releases)
 [![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20PWA-orange.svg)](https://lerntoolbox.mrgoldsmitt.work)
 
 Die **Lerntoolbox** ist eine webbasierte Lern- und Produktivitätsplattform, die speziell für den Einsatz im Schulunterricht, für Lehrkräfte sowie für Lernende entwickelt wurde. Sie bietet interaktive Werkzeuge zur Strukturierung, Visualisierung und Organisation von Lerninhalten – komplett responsiv, datensparsam und mit voller Offline-Unterstützung (Progressive Web App).
