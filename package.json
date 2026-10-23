@@ -1,0 +1,27 @@
+{
+  "name": "lerntoolbox",
+  "version": "0.10.1",
+  "description": "Digitale Lernplattform für Schule und Unterricht (Mindmap, Kanban, Flashcards, Entschuldigungen, Digiboard)",
+  "main": "script.js",
+  "scripts": {
+    "dev": "wrangler pages dev .",
+    "deploy": "wrangler pages deploy . --project-name lerntoolbox",
+    "db:migrate": "wrangler d1 execute lerntoolbox-db --file=./schema.sql --remote"
+  },
+  "keywords": [
+    "education",
+    "learning-tools",
+    "mindmap",
+    "kanban",
+    "flashcards",
+    "digiboard",
+    "cloudflare-pages",
+    "pwa"
+  ],
+  "author": "mrgoldsmitt",
+  "license": "MIT",
+  "dependencies": {
+    "acorn": "^8.18.0",
+    "acorn-loose": "^8.5.2"
+  }
+}
