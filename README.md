@@ -1,6 +1,6 @@
 # Lerntoolbox
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Release](https://img.shields.io/badge/Release-v0.10.1-green.svg)](https://github.com/mrgoldsmitt/lerntoolbox/releases)
 [![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20PWA-orange.svg)](https://lerntoolbox.mrgoldsmitt.work)
 
@@ -87,4 +87,6 @@ npm run db:migrate
 
 ## 📄 Lizenz
 
-Dieses Projekt steht unter der [MIT-Lizenz](LICENSE).
+Dieses Projekt steht unter der [Creative Commons Namensnennung - Nicht-kommerziell 4.0 International Lizenz (CC BY-NC 4.0)](LICENSE).
+- **Namensnennung:** Der Urheber (`mrgoldsmitt`) muss stets genannt werden.
+- **Nicht-kommerziell:** Das Projekt bzw. das Material darf nicht zu kommerziellen Zwecken verwendet werden.

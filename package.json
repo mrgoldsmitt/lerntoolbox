@@ -19,7 +19,7 @@
     "pwa"
   ],
   "author": "mrgoldsmitt",
-  "license": "MIT",
+  "license": "CC-BY-NC-4.0",
   "dependencies": {
     "acorn": "^8.18.0",
     "acorn-loose": "^8.5.2"
