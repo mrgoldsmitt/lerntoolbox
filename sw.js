@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lerntoolbox-v23';
+const CACHE_NAME = 'lerntoolbox-v24';
 
 // CRITICAL: These MUST exist for the app to run. Install will fail if these fail.
 const ASSETS_CRITICAL = [

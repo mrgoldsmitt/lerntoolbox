@@ -927,6 +927,114 @@ input:checked+.slider:before {
   transform: translateX(20px);
 }
 
+/* Mindmap Multi-selection & Format Styles */
+.mindmap-node.selected {
+  outline: 2px dashed var(--primary);
+  outline-offset: 4px;
+  box-shadow: 0 0 14px rgba(0, 134, 203, 0.45) !important;
+  z-index: 25;
+}
+
+body.light-mode .mindmap-node.selected {
+  outline-color: var(--flb-cyan);
+  box-shadow: 0 0 14px rgba(0, 134, 203, 0.4) !important;
+}
+
+.connection-group.selected .visual-line {
+  stroke: var(--primary) !important;
+  stroke-width: 4 !important;
+  stroke-dasharray: 6 3;
+  filter: drop-shadow(0 0 5px var(--primary));
+}
+
+.connection-group.selected .connection-label {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 8px rgba(0, 134, 203, 0.45);
+}
+
+.selection-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  border-radius: 30px;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 110;
+  backdrop-filter: blur(8px);
+}
+
+.selection-bar-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+.btn-selection {
+  background: var(--bg-color);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-main);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.btn-selection:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.btn-selection.delete:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.btn-selection-close {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.btn-selection-close:hover {
+  color: var(--text-main);
+}
+
+.preset-color-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.preset-color-dot:hover {
+  transform: scale(1.15);
+  border-color: var(--primary);
+}
+
 /* Printing styles */
 @media print {
 

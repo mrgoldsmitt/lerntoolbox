@@ -215,7 +215,7 @@
         </div>
 
         <div style="margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem; text-align: left;">
-            <p>&copy; 2026 mrgoldsmitt <span style="font-size: 0.85em; opacity: 0.7; margin-left: 4px;">v.0.10.3</span>
+            <p>&copy; 2026 mrgoldsmitt <span style="font-size: 0.85em; opacity: 0.7; margin-left: 4px;">v.0.10.4</span>
             </p>
             <div style="font-size: 0.75rem; margin-bottom: 0.4rem;">
                 <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.de" target="_blank" rel="noopener noreferrer" style="color: var(--text-muted); text-decoration: underline;" title="Creative Commons Namensnennung - Nicht-kommerziell 4.0 International">CC BY-NC 4.0 Lizenz</a>
@@ -288,6 +288,51 @@
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
             </svg>
             Umbenennen
+        </div>
+        <div class="menu-item" id="menu-toggle-selection" onclick="handleMenuToggleSelection()">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                <polyline points="9 11 12 14 22 4"></polyline>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            <span id="menu-toggle-selection-label">Zur Auswahl hinzufügen</span>
+        </div>
+        <div class="menu-item" id="menu-format-selection" onclick="handleMenuFormatSelection()">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                <circle cx="13.5" cy="6.5" r=".5"></circle>
+                <circle cx="17.5" cy="10.5" r=".5"></circle>
+                <circle cx="8.5" cy="7.5" r=".5"></circle>
+                <circle cx="6.5" cy="12.5" r=".5"></circle>
+                <path
+                    d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.55-.77 1.25-1.57-.23-.63-.09-1.33.4-1.89l1.1-1.28c.63-.73 1.62-1.03 2.53-.8 1.94.49 4.72-1.4 4.72-4.46 0-5.52-4.48-10-10-10z">
+                </path>
+            </svg>
+            <span id="menu-format-selection-label">Auswahl formatieren...</span>
+        </div>
+        <div class="menu-item" id="menu-copy" onclick="handleMenuCopy()">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span id="menu-copy-label">Kopieren</span>
+        </div>
+        <div class="menu-item" id="menu-paste" onclick="handleMenuPaste()" style="display: none;">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+            </svg>
+            Einfügen
+        </div>
+        <div class="menu-item" id="menu-clear-selection" onclick="clearSelection(); hideContextMenu();" style="display: none;">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            Auswahl aufheben
         </div>
         <div class="menu-item" id="menu-color" onclick="handleMenuColor()">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
@@ -365,6 +410,96 @@
             <div class="modal-actions" style="display: flex; gap: 1rem; justify-content: flex-end;">
                 <button class="btn-secondary" onclick="cancelColor()">Abbrechen</button>
                 <button class="btn-primary" onclick="confirmColor()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mindmap Multi-selection & Formatting Dialog -->
+    <div id="mindmap-format-dialog" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 440px; width: 90%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                <h3 id="format-dialog-title" style="margin: 0; color: var(--primary);">Formatierung</h3>
+                <button type="button" class="btn-secondary" onclick="closeMindmapFormatDialog()" style="padding: 0.2rem 0.6rem; border: none; font-size: 1.3rem; cursor: pointer; background: transparent; color: var(--text-muted);">&times;</button>
+            </div>
+            <p id="format-dialog-subtitle" style="margin-top: -0.4rem; margin-bottom: 1.2rem; font-size: 0.85rem; color: var(--text-muted);">Elemente anpassen</p>
+
+            <!-- Rahmen- & Linienfarbe -->
+            <div class="format-group" style="margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--card-border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                    <label style="font-weight: 600; font-size: 0.9rem;">Farbe des Rahmens / der Linie</label>
+                    <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="format-apply-border-color" checked>
+                        <span>Anwenden</span>
+                    </label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                    <input type="color" id="format-border-color-input" value="#0086cb" style="width: 44px; height: 38px; padding: 0; border: 1px solid var(--card-border); border-radius: 6px; cursor: pointer;">
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="preset-color-dot" style="background: #0086cb;" onclick="setFormatBorderColor('#0086cb')" title="Cyan"></button>
+                        <button type="button" class="preset-color-dot" style="background: #10b981;" onclick="setFormatBorderColor('#10b981')" title="Grün"></button>
+                        <button type="button" class="preset-color-dot" style="background: #8b5cf6;" onclick="setFormatBorderColor('#8b5cf6')" title="Lila"></button>
+                        <button type="button" class="preset-color-dot" style="background: #f59e0b;" onclick="setFormatBorderColor('#f59e0b')" title="Orange"></button>
+                        <button type="button" class="preset-color-dot" style="background: #ef4444;" onclick="setFormatBorderColor('#ef4444')" title="Rot"></button>
+                        <button type="button" class="preset-color-dot" style="background: #64748b;" onclick="setFormatBorderColor('#64748b')" title="Grau"></button>
+                        <button type="button" class="btn-secondary" style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px;" onclick="resetFormatBorderColor()">Standard</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schriftfarbe -->
+            <div class="format-group" style="margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--card-border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                    <label style="font-weight: 600; font-size: 0.9rem;">Schriftfarbe</label>
+                    <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="format-apply-text-color" checked>
+                        <span>Anwenden</span>
+                    </label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                    <input type="color" id="format-text-color-input" value="#000000" style="width: 44px; height: 38px; padding: 0; border: 1px solid var(--card-border); border-radius: 6px; cursor: pointer;">
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="preset-color-dot" style="background: #000000;" onclick="setFormatTextColor('#000000')" title="Schwarz"></button>
+                        <button type="button" class="preset-color-dot" style="background: #ffffff; border: 1px solid #94a3b8;" onclick="setFormatTextColor('#ffffff')" title="Weiß"></button>
+                        <button type="button" class="preset-color-dot" style="background: #0086cb;" onclick="setFormatTextColor('#0086cb')" title="Cyan"></button>
+                        <button type="button" class="preset-color-dot" style="background: #10b981;" onclick="setFormatTextColor('#10b981')" title="Grün"></button>
+                        <button type="button" class="preset-color-dot" style="background: #ef4444;" onclick="setFormatTextColor('#ef4444')" title="Rot"></button>
+                        <button type="button" class="preset-color-dot" style="background: #8b5cf6;" onclick="setFormatTextColor('#8b5cf6')" title="Lila"></button>
+                        <button type="button" class="btn-secondary" style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px;" onclick="resetFormatTextColor()">Standard</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Knotengröße (nur wenn nur Knoten ausgewählt sind) -->
+            <div id="format-size-section" class="format-group" style="margin-bottom: 1.2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                    <label style="font-weight: 600; font-size: 0.9rem;">Knotengröße</label>
+                    <label style="font-size: 0.8rem; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="format-apply-size" checked>
+                        <span>Anwenden</span>
+                    </label>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-bottom: 0.6rem;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Breite (px)</label>
+                        <input type="number" id="format-width-input" min="60" max="1000" step="10" value="120" style="width: 100%; padding: 0.45rem; border: 1px solid var(--card-border); border-radius: 6px; background: var(--bg-color); color: var(--text-main);">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Höhe (px)</label>
+                        <input type="number" id="format-height-input" min="30" max="1000" step="10" value="60" style="width: 100%; padding: 0.45rem; border: 1px solid var(--card-border); border-radius: 6px; background: var(--bg-color); color: var(--text-main);">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button type="button" class="btn-secondary" style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px;" onclick="setFormatSizePreset(100, 50)">100 × 50</button>
+                    <button type="button" class="btn-secondary" style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px;" onclick="setFormatSizePreset(120, 60)">120 × 60 (Std)</button>
+                    <button type="button" class="btn-secondary" style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px;" onclick="setFormatSizePreset(160, 80)">160 × 80</button>
+                    <button type="button" class="btn-secondary" style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px;" onclick="setFormatSizePreset(200, 60)">200 × 60</button>
+                    <button type="button" class="btn-secondary" style="font-size: 0.75rem; padding: 3px 8px; border-radius: 12px;" onclick="setFormatSizePreset(200, 100)">200 × 100</button>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">
+                <button type="button" class="btn-secondary" onclick="closeMindmapFormatDialog()">Abbrechen</button>
+                <button type="button" class="btn-primary" onclick="applyMindmapFormatting()">Übernehmen</button>
             </div>
         </div>
     </div>
@@ -607,6 +742,32 @@
                     <svg id="mindmap-svg"></svg>
                     <div id="mindmap-nodes-layer">
                     </div>
+                </div>
+                <!-- Selection Floating Toolbar -->
+                <div id="mindmap-selection-bar" class="selection-bar" style="display: none;">
+                    <span id="selection-bar-count" class="selection-bar-count">0 ausgewählt</span>
+                    <button type="button" class="btn-selection" onclick="openMindmapFormatDialog()" title="Farbe & Größe ändern">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="13.5" cy="6.5" r=".5"></circle><circle cx="17.5" cy="10.5" r=".5"></circle><circle cx="8.5" cy="7.5" r=".5"></circle><circle cx="6.5" cy="12.5" r=".5"></circle>
+                            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.55-.77 1.25-1.57-.23-.63-.09-1.33.4-1.89l1.1-1.28c.63-.73 1.62-1.03 2.53-.8 1.94.49 4.72-1.4 4.72-4.46 0-5.52-4.48-10-10-10z"></path>
+                        </svg>
+                        <span>Formatieren</span>
+                    </button>
+                    <button type="button" class="btn-selection" onclick="copySelectedMindmapElements()" title="Kopieren">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span>Kopieren</span>
+                    </button>
+                    <button type="button" class="btn-selection delete" onclick="deleteSelectedMindmapElements()" title="Löschen">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        <span>Löschen</span>
+                    </button>
+                    <button type="button" class="btn-selection-close" onclick="clearSelection()" title="Auswahl aufheben">&times;</button>
                 </div>
                 <!-- Grid Toggle -->
                 <div class="grid-toggle-container" style="position: absolute; bottom: 10px; right: 10px; z-index: 100;">
@@ -1827,7 +1988,16 @@
             <div class="card"
                 style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--card-border); max-height: 70vh; overflow-y: auto;">
 
-                <h3 style="color: var(--primary); margin-top: 0;">Version 0.10.3</h3>
+                <h3 style="color: var(--primary); margin-top: 0;">Version 0.10.4</h3>
+                <ul
+                    style="margin-bottom: 1.5rem; list-style-type: disc; margin-left: 1.5rem; color: var(--text-muted);">
+                    <li><strong>Neu: Mindmap-Mehrfachauswahl & gemeinsame Formatierung:</strong> Mehrere Knoten und Verbindungen können gleichzeitig markiert werden (per <code>Strg</code>/<code>Cmd</code>-Klick oder über das Kontextmenü „Zur Auswahl hinzufügen“, optimal für Touchscreens). Die Auswahl kann gemeinsam formatiert werden (Rahmen-/Linienfarbe, Schriftfarbe). Sind ausschließlich Knoten ausgewählt, kann auch deren Größe (Breite und Höhe) einheitlich geändert werden. Zudem können markierte Knoten gemeinsam verschoben oder synchron skaliert werden.</li>
+                    <li><strong>Neu: Mindmap-Kopieren & Einfügen:</strong> Knoten können samt Farben, individuellen Maßen, Textformatierung und ihren internen Verbindungen kopiert und eingefügt werden (<code>Strg+C</code> / <code>Strg+V</code>, Kontextmenü oder Auswahl-Aktionsleiste).</li>
+                    <li><strong>Bugfix Mindmap-Speichern:</strong> Individuelle Größenänderungen von Knoten werden nun beim Speichern (sowohl beim Cloud-Sync als auch beim XML-Export) vollständig erhalten und gehen nicht mehr verloren.</li>
+                    <li><strong>Bugfix Mindmap-Verbindungen & Hierarchie:</strong> Beim Löschen einer Verbindung wird die Eltern-Kind-Beziehung nun auch intern vollständig bereinigt. Der blaue Einklapp-Badge (<code>−</code>) verschwindet korrekt, sobald ein Knoten keine Unterknoten mehr hat, und verwaiste Folgeknoten können nicht mehr fälschlicherweise eingeklappt werden.</li>
+                </ul>
+
+                <h3>Version 0.10.3</h3>
                 <ul
                     style="margin-bottom: 1.5rem; list-style-type: disc; margin-left: 1.5rem; color: var(--text-muted);">
                     <li><strong>Bugfix Menü-Ausrichtung:</strong> Die Menüs in den Tools (u.&nbsp;a. Mindmap und Flashcards) öffnen sich nun zuverlässig nach rechts und ragen weder am linken Bildschirmrand noch über die Seitenleiste hinaus, sodass alle Menüeinträge auf Mobil- und Desktop-Geräten vollständig sichtbar und lesbar sind.</li>

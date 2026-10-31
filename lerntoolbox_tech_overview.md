@@ -12,7 +12,7 @@ tags:
   - domain/education
   - license/cc-by-nc-4.0
 type: web-application-architecture
-version: "0.10.3"
+version: "0.10.4"
 status: production-ready
 stack:
   frontend: "Vanilla HTML5, CSS3, JavaScript (SPA, PWA Offline-First)"
@@ -23,7 +23,7 @@ stack:
 repository_path: "/Users/mrgoldsmitt/Projekte/Lerntoolbox/lerntoolbox"
 github: "https://github.com/mrgoldsmitt/lerntoolbox"
 created_date: 2026-08-16
-last_updated: 2026-10-23
+last_updated: 2026-10-31
 ---
 
 # 📖 Lerntoolbox: Technische Gesamtdokumentation & Architektur
@@ -163,6 +163,13 @@ Wenn du als KI an diesem Repository arbeitest, halte dich an folgende Regeln:
 ---
 
 ## 9. Changelog
+
+### Version 0.10.4 (2026-10-31)
+- **Mindmap-Mehrfachauswahl & einheitliche Formatierung**: Knoten und Verbindungen können nun über `Strg`/`Cmd`-Klick oder das Kontextmenü („Zur Auswahl hinzufügen“) mehrfach ausgewählt werden (optimiert für Touchscreens). Die Auswahl kann gleichzeitig bezüglich Rahmen-/Linienfarbe und Schriftfarbe formatiert werden. Wenn nur Knoten ausgewählt sind, lässt sich auch deren Größe einheitlich anpassen. Auswahl-Aktionsleiste (`#mindmap-selection-bar`) und Formatierungsdialog mit Presets. Unterstützung für synchrones Multi-Drag und Multi-Resize.
+- **Mindmap Kopieren & Einfügen**: Knoten können inklusive ihrer Farben, Maße, Schriftformatierung und internen Verbindungen kopiert und eingefügt werden (`Strg+C` / `Strg+V`, Kontextmenü oder Aktionsleiste).
+- **Bugfix Knotengrößen beim Speichern**: Behebung des Fehlers, durch den manuell geänderte Kartengrößen (Breite und Höhe) beim Cloud-Speichern oder XML-Export/Import verworfen wurden.
+- **Bugfix Verbindungslöschung & Hierarchie**: Wird eine Verbindung gelöscht, wird die interne Hierarchie (`parentId`) bereinigt (`cleanupOrphanedParents()`). Der blaue Einklapp-Badge (`−`) verschwindet ordnungsgemäß und verwaiste Folgeknoten können nicht mehr fälschlicherweise eingeklappt werden.
+- **PWA-Cache**: Erhöhung des Cache-Namens im Service Worker auf `lerntoolbox-v24`.
 
 ### Version 0.10.3 (2026-10-23)
 - **Bugfix Kontextmenüs / Tool-Menüs**: Behebung des Fehlers, dass Menüs in Werkzeugen wie Mindmap und Flashcards zu weit links bzw. nach links geöffnet gerendert wurden. Menüs öffnen sich nun standardmäßig nach rechts und verfügen über eine dynamische Viewport-Begrenzung (`adjustBurgerDropdownPosition`), sodass Einträge auf Desktop und Mobilgeräten niemals abgeschnitten oder durch die Seitenleiste verdeckt werden.

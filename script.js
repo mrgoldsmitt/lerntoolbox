@@ -1,12 +1,148 @@
 // --- State Management ---
 let currentMode = 'launchpad'; // 'mindmap', 'impressum', 'launchpad'
 
+// XML Escape Helper
+function escapeXml(unsafe) {
+    if (unsafe === null || unsafe === undefined) return '';
+    return String(unsafe).replace(/[<>&'"]/g, function (c) {
+        switch (c) {
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '&': return '&amp;';
+            case '\'': return '&apos;';
+            case '"': return '&quot;';
+            default: return c;
+        }
+    });
+}
+
 // Mindmap State
-let nodes = [];       // Array of {id, x, y, text, width, height, color}
-let connections = []; // Array of {fromId, toId, text, color}
+let nodes = [];       // Array of {id, x, y, text, width, height, color, textColor, parentId, collapsed}
+let connections = []; // Array of {fromId, toId, text, color, textColor}
 let nextNodeId = 1;
-let selectedNodeId = null;
+let selectedNodes = new Set(); // Set of node ids (numbers)
+let selectedConnections = new Set(); // Set of connection keys `${c.fromId}-${c.toId}`
+let mindmapClipboard = null; // { nodes: [...], connections: [...], minX, minY, pasteCount }
 let linkingNodeId = null; // Node currently being linked from
+
+// Selection Helper Functions
+function getConnKey(conn) {
+    if (!conn) return '';
+    return `${conn.fromId}-${conn.toId}`;
+}
+
+function isNodeSelected(id) {
+    return selectedNodes.has(id);
+}
+
+function isConnectionSelected(conn) {
+    return selectedConnections.has(getConnKey(conn));
+}
+
+function selectNode(id, addToSelection = false) {
+    if (!addToSelection) {
+        selectedNodes.clear();
+        selectedConnections.clear();
+    }
+    selectedNodes.add(id);
+    updateSelectionUI();
+}
+
+function deselectNode(id) {
+    selectedNodes.delete(id);
+    updateSelectionUI();
+}
+
+function toggleNodeSelection(id) {
+    if (selectedNodes.has(id)) {
+        selectedNodes.delete(id);
+    } else {
+        selectedNodes.add(id);
+    }
+    updateSelectionUI();
+}
+
+function selectConnection(conn, addToSelection = false) {
+    if (!addToSelection) {
+        selectedNodes.clear();
+        selectedConnections.clear();
+    }
+    selectedConnections.add(getConnKey(conn));
+    updateSelectionUI();
+}
+
+function deselectConnection(conn) {
+    selectedConnections.delete(getConnKey(conn));
+    updateSelectionUI();
+}
+
+function toggleConnectionSelection(conn) {
+    const key = getConnKey(conn);
+    if (selectedConnections.has(key)) {
+        selectedConnections.delete(key);
+    } else {
+        selectedConnections.add(key);
+    }
+    updateSelectionUI();
+}
+
+function clearSelection() {
+    selectedNodes.clear();
+    selectedConnections.clear();
+    updateSelectionUI();
+}
+
+function updateSelectionUI() {
+    // Update node elements
+    nodes.forEach(n => {
+        const el = document.getElementById(`node-${n.id}`);
+        if (el) {
+            el.classList.toggle('selected', selectedNodes.has(n.id));
+        }
+    });
+
+    // Update connection elements
+    connections.forEach((c, idx) => {
+        const key = getConnKey(c);
+        const isSel = selectedConnections.has(key);
+        const group = svgLayer && svgLayer.children ? svgLayer.children[idx] : null;
+        if (group) {
+            group.classList.toggle('selected', isSel);
+        }
+        const label = document.getElementById(`conn-label-${idx}`);
+        if (label) {
+            label.classList.toggle('selected', isSel);
+        }
+    });
+
+    // Update floating selection bar
+    const bar = document.getElementById('mindmap-selection-bar');
+    const countLabel = document.getElementById('selection-bar-count');
+    const totalSelected = selectedNodes.size + selectedConnections.size;
+
+    if (bar && countLabel) {
+        if (totalSelected > 0) {
+            bar.style.display = 'flex';
+            if (totalSelected === 1) {
+                if (selectedNodes.size === 1) {
+                    countLabel.textContent = '1 Knoten';
+                } else {
+                    countLabel.textContent = '1 Verbindung';
+                }
+            } else {
+                if (selectedConnections.size === 0) {
+                    countLabel.textContent = `${selectedNodes.size} Knoten`;
+                } else if (selectedNodes.size === 0) {
+                    countLabel.textContent = `${selectedConnections.size} Verbindungen`;
+                } else {
+                    countLabel.textContent = `${totalSelected} Elemente`;
+                }
+            }
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+}
 
 // Grid State
 let isGridActive = false;
@@ -23,7 +159,7 @@ let viewState = {
 };
 
 // Context Menus
-let contextMenuTarget = null; // { type: 'node'|'connection', id: ... }
+let contextMenuTarget = null; // { type: 'node'|'connection'|'background', id: ... }
 const contextMenu = document.getElementById('context-menu');
 const colorDialog = document.getElementById('color-dialog');
 const dialogColorInput = document.getElementById('dialog-color-input');
@@ -51,24 +187,110 @@ function showContextMenu(e, type, id) {
     const menuColor = document.getElementById('menu-color');
     const menuDelete = document.getElementById('menu-delete');
     const menuClearAll = document.getElementById('menu-clear-all');
+    const menuToggleSel = document.getElementById('menu-toggle-selection');
+    const menuToggleSelLabel = document.getElementById('menu-toggle-selection-label');
+    const menuFormatSel = document.getElementById('menu-format-selection');
+    const menuFormatSelLabel = document.getElementById('menu-format-selection-label');
+    const menuCopy = document.getElementById('menu-copy');
+    const menuCopyLabel = document.getElementById('menu-copy-label');
+    const menuPaste = document.getElementById('menu-paste');
+    const menuClearSel = document.getElementById('menu-clear-selection');
+
+    const totalSelected = selectedNodes.size + selectedConnections.size;
+    const hasClipboard = !!(mindmapClipboard && mindmapClipboard.nodes && mindmapClipboard.nodes.length > 0);
 
     if (type === 'background') {
-        if (menuNewNode) menuNewNode.style.display = 'block';
-        if (menuCenter) menuCenter.style.display = 'block';
+        if (menuNewNode) menuNewNode.style.display = 'flex';
+        if (menuCenter) menuCenter.style.display = 'flex';
         if (menuRename) menuRename.style.display = 'none';
         if (menuColor) menuColor.style.display = 'none';
         if (menuDelete) menuDelete.style.display = 'none';
-        if (menuClearAll) menuClearAll.style.display = 'block';
+        if (menuClearAll) menuClearAll.style.display = 'flex';
+        if (menuToggleSel) menuToggleSel.style.display = 'none';
+        if (menuFormatSel) menuFormatSel.style.display = totalSelected > 0 ? 'flex' : 'none';
+        if (menuCopy) menuCopy.style.display = totalSelected > 0 ? 'flex' : 'none';
+        if (menuCopyLabel) menuCopyLabel.textContent = totalSelected > 1 ? 'Auswahl kopieren' : 'Kopieren';
+        if (menuPaste) menuPaste.style.display = hasClipboard ? 'flex' : 'none';
+        if (menuClearSel) menuClearSel.style.display = totalSelected > 0 ? 'flex' : 'none';
     } else {
+        let isTargetSelected = false;
+        if (type === 'node') {
+            isTargetSelected = selectedNodes.has(id);
+        } else if (type === 'connection') {
+            const conn = connections[id];
+            isTargetSelected = conn ? isConnectionSelected(conn) : false;
+        }
+
         if (menuNewNode) menuNewNode.style.display = 'none';
         if (menuCenter) menuCenter.style.display = 'none';
-        if (menuRename) menuRename.style.display = 'block';
-        if (menuColor) menuColor.style.display = 'block';
-        if (menuDelete) menuDelete.style.display = 'block';
+        if (menuRename) menuRename.style.display = 'flex';
+        if (menuDelete) menuDelete.style.display = 'flex';
         if (menuClearAll) menuClearAll.style.display = 'none';
+
+        if (menuToggleSel) {
+            menuToggleSel.style.display = 'flex';
+            if (menuToggleSelLabel) {
+                menuToggleSelLabel.textContent = isTargetSelected ? 'Aus Auswahl entfernen' : 'Zur Auswahl hinzufügen';
+            }
+        }
+
+        if (totalSelected > 1 || (totalSelected >= 1 && isTargetSelected)) {
+            if (menuFormatSel) {
+                menuFormatSel.style.display = 'flex';
+                if (menuFormatSelLabel) menuFormatSelLabel.textContent = 'Auswahl formatieren...';
+            }
+            if (menuColor) menuColor.style.display = 'none';
+            if (menuClearSel) menuClearSel.style.display = 'flex';
+            if (menuCopy) {
+                menuCopy.style.display = 'flex';
+                if (menuCopyLabel) menuCopyLabel.textContent = 'Auswahl kopieren';
+            }
+        } else {
+            if (menuFormatSel) menuFormatSel.style.display = 'none';
+            if (menuColor) menuColor.style.display = 'flex';
+            if (menuClearSel) menuClearSel.style.display = totalSelected > 0 ? 'flex' : 'none';
+            if (menuCopy) {
+                menuCopy.style.display = type === 'node' ? 'flex' : 'none';
+                if (menuCopyLabel) menuCopyLabel.textContent = 'Kopieren';
+            }
+        }
+
+        if (menuPaste) menuPaste.style.display = hasClipboard ? 'flex' : 'none';
     }
 
     showMenuAt(clientX, clientY);
+}
+
+function handleMenuToggleSelection() {
+    if (!contextMenuTarget) return;
+    if (contextMenuTarget.type === 'node') {
+        toggleNodeSelection(contextMenuTarget.id);
+    } else if (contextMenuTarget.type === 'connection') {
+        const conn = connections[contextMenuTarget.id];
+        if (conn) toggleConnectionSelection(conn);
+    }
+    hideContextMenu();
+}
+
+function handleMenuFormatSelection() {
+    hideContextMenu();
+    openMindmapFormatDialog();
+}
+
+function handleMenuCopy() {
+    copySelectedMindmapElements();
+    hideContextMenu();
+}
+
+function handleMenuPaste() {
+    if (contextMenuTarget && contextMenuTarget.type === 'background') {
+        const vpX = (contextMenuTarget.x - viewState.x) / viewState.zoom;
+        const vpY = (contextMenuTarget.y - viewState.y) / viewState.zoom;
+        pasteMindmapElements(vpX, vpY);
+    } else {
+        pasteMindmapElements();
+    }
+    hideContextMenu();
 }
 
 function showMenuAt(x, y) {
@@ -125,20 +347,51 @@ function init() {
 
     // Global click to deselect
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.mindmap-node') && !e.target.closest('.toolbar')) {
+        if (!e.target.closest('.mindmap-node') &&
+            !e.target.closest('.connection-group') &&
+            !e.target.closest('.connection-label') &&
+            !e.target.closest('.toolbar') &&
+            !e.target.closest('.context-menu') &&
+            !e.target.closest('.modal-overlay') &&
+            !e.target.closest('.selection-bar')) {
+            if (!e.ctrlKey && !e.metaKey) {
+                clearSelection();
+            }
             linkingNodeId = null;
             document.querySelectorAll('.mindmap-node.linking').forEach(el => el.classList.remove('linking'));
             renderConnections(); // Redraw
         }
     });
 
-    // Handle delete key
+    // Handle shortcuts: Delete, Backspace, Ctrl+C, Ctrl+V, Escape
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Delete' || e.key === 'Backspace') {
-            // Only if not editing text
-            if (document.activeElement.getAttribute('contenteditable') !== 'true') {
-                // For now we rely on context menu, but could add selection logic later
+        if (currentMode !== 'mindmap') return;
+
+        // Ignore if typing in contenteditable, input, textarea, select
+        if (document.activeElement && (
+            document.activeElement.getAttribute('contenteditable') === 'true' ||
+            ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)
+        )) {
+            return;
+        }
+
+        const isCtrl = e.ctrlKey || e.metaKey;
+
+        if (isCtrl && (e.key === 'c' || e.key === 'C')) {
+            copySelectedMindmapElements();
+            e.preventDefault();
+        } else if (isCtrl && (e.key === 'v' || e.key === 'V')) {
+            pasteMindmapElements();
+            e.preventDefault();
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+            if (selectedNodes.size > 0 || selectedConnections.size > 0) {
+                deleteSelectedMindmapElements();
+                e.preventDefault();
             }
+        } else if (e.key === 'Escape') {
+            clearSelection();
+            hideContextMenu();
+            closeMindmapFormatDialog();
         }
     });
 
@@ -291,10 +544,19 @@ function loadAppState() {
         if (state.mindmap) {
             nodes = (state.mindmap.nodes || []).map(n => ({
                 ...n,
+                width: n.width || 120,
+                height: n.height || 60,
+                color: n.color || null,
+                textColor: n.textColor || null,
                 parentId: n.parentId !== undefined ? n.parentId : null,
                 collapsed: n.collapsed || false
             }));
-            connections = state.mindmap.connections || [];
+            connections = (state.mindmap.connections || []).map(c => ({
+                ...c,
+                color: c.color || null,
+                textColor: c.textColor || null
+            }));
+            cleanupOrphanedParents();
             nextNodeId = state.mindmap.nextNodeId || 1;
             viewState = state.mindmap.viewState || { x: 0, y: 0, zoom: 1 };
             isGridActive = state.mindmap.isGridActive || false;
@@ -375,6 +637,7 @@ function renderMindmap() {
     nodes.forEach(n => renderNode(n));
     renderConnections();
     updateAllCollapseButtons();
+    updateSelectionUI();
 }
 
 // Prompt Generator Variables
@@ -1425,6 +1688,21 @@ function getPinchDistance(e) {
 
 // --- Mindmap Logic ---
 
+// Clean up any parentId references where no connection exists anymore
+function cleanupOrphanedParents() {
+    nodes.forEach(n => {
+        if (n.parentId !== null && n.parentId !== undefined) {
+            const hasConnection = connections.some(c =>
+                (c.fromId === n.parentId && c.toId === n.id) ||
+                (c.fromId === n.id && c.toId === n.parentId)
+            );
+            if (!hasConnection) {
+                n.parentId = null;
+            }
+        }
+    });
+}
+
 // Get direct children of a node (nodes whose parentId === nodeId)
 function getChildNodeIds(nodeId) {
     return nodes.filter(n => n.parentId === nodeId).map(n => n.id);
@@ -1504,6 +1782,7 @@ function createNode(x, y, text = 'Neuer Knoten', parentId = null) {
         y,
         text,
         color: null, // Custom color
+        textColor: null, // Custom text color
         width: 120,
         height: 60,
         parentId: parentId,
@@ -1522,11 +1801,13 @@ function createNode(x, y, text = 'Neuer Knoten', parentId = null) {
                 fromId: parentId,
                 toId: id,
                 text: '',
-                color: null
+                color: null,
+                textColor: null
             });
         }
     }
 
+    selectNode(id, false);
     renderNode(node);
     renderConnections();
     updateAllCollapseButtons();
@@ -1656,14 +1937,29 @@ function renderNode(node) {
         // Also color handles
         const handles = el.querySelectorAll('.resize-handle');
         handles.forEach(h => {
-            // For corners, we used border-top/left etc. so border-color works if we set it on the element?
-            // The CSS uses specific borders. Let's set border-color which cascades to all sides, but only visible ones show.
             h.style.borderColor = node.color;
         });
-        // Optional: slight bg tint?
     } else {
         el.style.borderColor = ''; // Reset to CSS default
+        const handles = el.querySelectorAll('.resize-handle');
+        handles.forEach(h => {
+            h.style.borderColor = '';
+        });
     }
+
+    // Text Color
+    if (node.textColor) {
+        el.style.color = node.textColor;
+        const contentEl = el.querySelector('.node-content');
+        if (contentEl) contentEl.style.color = node.textColor;
+    } else {
+        el.style.color = '';
+        const contentEl = el.querySelector('.node-content');
+        if (contentEl) contentEl.style.color = '';
+    }
+
+    // Selection class
+    el.classList.toggle('selected', selectedNodes.has(node.id));
 
     // Update collapse button visibility and icon
     const collapseBtn = el.querySelector('.node-collapse-btn');
@@ -1693,18 +1989,27 @@ function updateNodeText(id, div) {
 function makeDraggable(el, id) {
     let isDragging = false;
     let startX, startY;
-    let initialNodeX, initialNodeY;
+    let initialPositions = new Map();
+    let hasDragged = false;
 
     const dragStart = (clientX, clientY) => {
         const node = nodes.find(n => n.id === id);
         if (!node) return; // Safety check
 
         isDragging = true;
+        hasDragged = false;
         startX = clientX;
         startY = clientY;
 
-        initialNodeX = node.x;
-        initialNodeY = node.y;
+        initialPositions.clear();
+        if (selectedNodes.has(id)) {
+            selectedNodes.forEach(selId => {
+                const sn = nodes.find(n => n.id === selId);
+                if (sn) initialPositions.set(selId, { x: sn.x, y: sn.y });
+            });
+        } else {
+            initialPositions.set(id, { x: node.x, y: node.y });
+        }
 
         el.style.zIndex = 1000;
         el.classList.add('dragging');
@@ -1717,28 +2022,37 @@ function makeDraggable(el, id) {
         const dxScreen = clientX - startX;
         const dyScreen = clientY - startY;
 
+        if (Math.abs(dxScreen) > 3 || Math.abs(dyScreen) > 3) {
+            hasDragged = true;
+        }
+
         // Convert delta to viewport pixels (divide by zoom)
         const dx = dxScreen / viewState.zoom;
         const dy = dyScreen / viewState.zoom;
 
-        let newX = initialNodeX + dx;
-        let newY = initialNodeY + dy;
+        initialPositions.forEach((initPos, selId) => {
+            let newX = initPos.x + dx;
+            let newY = initPos.y + dy;
 
-        // Snapping
-        if (isGridActive) {
-            newX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
-            newY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
-        }
+            // Snapping
+            if (isGridActive) {
+                newX = Math.round(newX / GRID_SIZE) * GRID_SIZE;
+                newY = Math.round(newY / GRID_SIZE) * GRID_SIZE;
+            }
 
-        el.style.left = `${newX}px`;
-        el.style.top = `${newY}px`;
+            const selEl = document.getElementById(`node-${selId}`);
+            if (selEl) {
+                selEl.style.left = `${newX}px`;
+                selEl.style.top = `${newY}px`;
+            }
 
-        // Update model
-        const node = nodes.find(n => n.id === id);
-        if (node) {
-            node.x = newX;
-            node.y = newY;
-        }
+            // Update model
+            const n = nodes.find(x => x.id === selId);
+            if (n) {
+                n.x = newX;
+                n.y = newY;
+            }
+        });
 
         renderConnections();
     };
@@ -1748,7 +2062,9 @@ function makeDraggable(el, id) {
             isDragging = false;
             el.style.zIndex = '';
             el.classList.remove('dragging');
-            saveAppState();
+            if (hasDragged) {
+                saveAppState();
+            }
         }
     };
 
@@ -1757,9 +2073,38 @@ function makeDraggable(el, id) {
 
     // Mouse Events
     header.addEventListener('mousedown', (e) => {
-        if (e.target.classList.contains('node-port') || e.target.classList.contains('node-collapse-btn') || e.target.classList.contains('node-add-child-btn') || e.target.getAttribute('contenteditable') === 'true') return;
+        if (e.target.classList.contains('node-port') ||
+            e.target.classList.contains('node-collapse-btn') ||
+            e.target.classList.contains('node-add-child-btn') ||
+            e.target.getAttribute('contenteditable') === 'true' ||
+            e.target.classList.contains('resize-handle')) return;
+
+        if (e.button !== 0) return;
+
+        if (e.ctrlKey || e.metaKey) {
+            e.stopPropagation();
+            toggleNodeSelection(id);
+            return;
+        }
+
         dragStart(e.clientX, e.clientY);
         e.stopPropagation(); // Prevent viewport panning
+    });
+
+    header.addEventListener('click', (e) => {
+        if (e.target.classList.contains('node-port') ||
+            e.target.classList.contains('node-collapse-btn') ||
+            e.target.classList.contains('node-add-child-btn') ||
+            e.target.getAttribute('contenteditable') === 'true' ||
+            e.target.classList.contains('resize-handle')) return;
+
+        e.stopPropagation();
+
+        if (e.ctrlKey || e.metaKey) return;
+
+        if (!hasDragged) {
+            selectNode(id, false);
+        }
     });
 
     window.addEventListener('mousemove', (e) => {
@@ -1772,7 +2117,12 @@ function makeDraggable(el, id) {
 
     // Touch Events
     header.addEventListener('touchstart', (e) => {
-        if (e.target.classList.contains('node-port') || e.target.classList.contains('node-collapse-btn') || e.target.classList.contains('node-add-child-btn') || e.target.getAttribute('contenteditable') === 'true') return;
+        if (e.target.classList.contains('node-port') ||
+            e.target.classList.contains('node-collapse-btn') ||
+            e.target.classList.contains('node-add-child-btn') ||
+            e.target.getAttribute('contenteditable') === 'true' ||
+            e.target.classList.contains('resize-handle')) return;
+
         if (e.touches.length === 1) {
             dragStart(e.touches[0].clientX, e.touches[0].clientY);
             e.stopPropagation();
@@ -1781,10 +2131,7 @@ function makeDraggable(el, id) {
 
     window.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
-        dragMove(e.touches[0].clientX, e.touches[0].clientY);
-        // Do NOT preventDefault here if you want scrolling? 
-        // But we want to prevent viewport scroll if dragging node.
-        if (isDragging) {
+        if (e.touches.length === 1) {
             dragMove(e.touches[0].clientX, e.touches[0].clientY);
             e.preventDefault(); // Prevent scrolling while dragging handle
         }
@@ -1880,13 +2227,31 @@ function makeResizable(handle, id, pos) {
             el.style.top = `${newY}px`;
         }
 
+        // Synchronize resize if multiple nodes are selected
+        if (selectedNodes.has(id) && selectedNodes.size > 1 && selectedConnections.size === 0) {
+            selectedNodes.forEach(otherId => {
+                if (otherId !== id) {
+                    const otherNode = nodes.find(n => n.id === otherId);
+                    if (otherNode) {
+                        otherNode.width = newW;
+                        otherNode.height = newH;
+                        const otherEl = document.getElementById(`node-${otherId}`);
+                        if (otherEl) {
+                            otherEl.style.width = `${newW}px`;
+                            otherEl.style.height = `${newH}px`;
+                        }
+                    }
+                }
+            });
+        }
+
         renderConnections();
-    }
+    };
 
     const resizeEnd = () => {
         isResizing = false;
         saveAppState();
-    }
+    };
 
     // Mouse
     handle.addEventListener('mousedown', (e) => {
@@ -1940,7 +2305,8 @@ function handlePortClick(e, id) {
                     fromId: linkingNodeId,
                     toId: id,
                     text: '',
-                    color: null
+                    color: null,
+                    textColor: null
                 });
 
                 // Set parent-child relationship: target becomes child of source
@@ -1981,16 +2347,28 @@ function renderConnections() {
         if (hiddenIds.has(conn.fromId) || hiddenIds.has(conn.toId)) return;
 
         // Simple center-to-center line
-        // Use node width/height for center
         const x1 = n1.x + n1.width / 2;
         const y1 = n1.y + n1.height / 2;
         const x2 = n2.x + n2.width / 2;
         const y2 = n2.y + n2.height / 2;
 
+        const connKey = getConnKey(conn);
+        const isConnSel = selectedConnections.has(connKey);
+
         // Create Group
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        group.setAttribute('class', 'connection-group');
+        group.setAttribute('class', 'connection-group' + (isConnSel ? ' selected' : ''));
         group.addEventListener('contextmenu', (e) => showContextMenu(e, 'connection', index));
+
+        // Click to select connection
+        group.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (e.ctrlKey || e.metaKey) {
+                toggleConnectionSelection(conn);
+            } else {
+                selectConnection(conn, false);
+            }
+        });
 
         // Long Press for Context Menu (Touch) - Connection
         let connPressTimer;
@@ -1998,17 +2376,6 @@ function renderConnections() {
 
         group.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
-                // Should stop propagation to background?
-                // If we don't, background might trigger too?
-                // But background ignores e.target !== viewport/svg
-                // here e.target is the line (child of svg)
-                // So background listener ALREADY ignores it.
-                // We just need to handle it here.
-
-                // e.stopPropagation(); // prevent panning if pressing line? 
-                // Actually panning should probably still work if you drag?
-                // But long press requires stationary.
-
                 connStartX = e.touches[0].clientX;
                 connStartY = e.touches[0].clientY;
                 connPressTimer = setTimeout(() => {
@@ -2054,17 +2421,29 @@ function renderConnections() {
         svgLayer.appendChild(group);
 
         // 3. Label (HTML)
-        // Calculate Midpoint
         const midX = (x1 + x2) / 2;
         const midY = (y1 + y2) / 2;
 
         const label = document.createElement('div');
-        label.className = 'connection-label';
+        label.className = 'connection-label' + (isConnSel ? ' selected' : '');
         if (conn.text || '') label.classList.add('visible');
         label.innerText = conn.text || '';
         label.style.left = `${midX}px`;
         label.style.top = `${midY}px`;
         label.id = `conn-label-${index}`;
+        if (conn.textColor) {
+            label.style.color = conn.textColor;
+        }
+
+        // Click to select
+        label.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (e.ctrlKey || e.metaKey) {
+                toggleConnectionSelection(conn);
+            } else {
+                selectConnection(conn, false);
+            }
+        });
 
         // Context menu for label too
         label.addEventListener('contextmenu', (e) => showContextMenu(e, 'connection', index));
@@ -2144,25 +2523,12 @@ function makeEditable(element) {
 }
 
 function handleMenuColor() {
-    if (contextMenuTarget) {
-        // Pre-fill
-        let currentColor = '#0086cb'; // default
-        if (contextMenuTarget.type === 'node') {
-            const node = nodes.find(n => n.id === contextMenuTarget.id);
-            if (node && node.color) currentColor = node.color;
-        } else if (contextMenuTarget.type === 'connection') {
-            const conn = connections[contextMenuTarget.id];
-            if (conn && conn.color) currentColor = conn.color;
-        }
-        dialogColorInput.value = currentColor;
-
-        colorDialog.style.display = 'flex';
-    }
     hideContextMenu();
+    openMindmapFormatDialog();
 }
 
 function confirmColor() {
-    const color = dialogColorInput.value;
+    const color = dialogColorInput ? dialogColorInput.value : '#0086cb';
     if (contextMenuTarget) {
         if (contextMenuTarget.type === 'node') {
             const node = nodes.find(n => n.id === contextMenuTarget.id);
@@ -2180,21 +2546,384 @@ function confirmColor() {
             }
         }
     }
-    colorDialog.style.display = 'none';
+    if (colorDialog) colorDialog.style.display = 'none';
 }
 
 function cancelColor() {
-    colorDialog.style.display = 'none';
+    if (colorDialog) colorDialog.style.display = 'none';
+}
+
+// Mindmap Format Dialog Functions
+function openMindmapFormatDialog(target = null) {
+    hideContextMenu();
+    const dialog = document.getElementById('mindmap-format-dialog');
+    if (!dialog) return;
+
+    let targetNodes = [];
+    let targetConnections = [];
+
+    if (selectedNodes.size > 0 || selectedConnections.size > 0) {
+        targetNodes = nodes.filter(n => selectedNodes.has(n.id));
+        targetConnections = connections.filter(c => selectedConnections.has(getConnKey(c)));
+    } else if (contextMenuTarget) {
+        if (contextMenuTarget.type === 'node') {
+            const n = nodes.find(x => x.id === contextMenuTarget.id);
+            if (n) targetNodes = [n];
+        } else if (contextMenuTarget.type === 'connection') {
+            const c = connections[contextMenuTarget.id];
+            if (c) targetConnections = [c];
+        }
+    }
+
+    if (targetNodes.length === 0 && targetConnections.length === 0 && target) {
+        if (target.type === 'node') {
+            const n = nodes.find(x => x.id === target.id);
+            if (n) targetNodes = [n];
+        } else if (target.type === 'connection') {
+            targetConnections = [target.conn];
+        }
+    }
+
+    if (targetNodes.length === 0 && targetConnections.length === 0) {
+        alert('Bitte wähle zuerst mindestens einen Knoten oder eine Verbindung aus.');
+        return;
+    }
+
+    const title = document.getElementById('format-dialog-title');
+    const subtitle = document.getElementById('format-dialog-subtitle');
+    const sizeSection = document.getElementById('format-size-section');
+
+    const isOnlyNodes = targetNodes.length > 0 && targetConnections.length === 0;
+
+    if (title) {
+        title.textContent = (targetNodes.length + targetConnections.length > 1) ? 'Auswahl formatieren' : 'Formatierung';
+    }
+
+    if (subtitle) {
+        if (isOnlyNodes) {
+            subtitle.textContent = targetNodes.length === 1 ? '1 Knoten anpassen' : `${targetNodes.length} Knoten anpassen`;
+        } else if (targetNodes.length === 0 && targetConnections.length > 0) {
+            subtitle.textContent = targetConnections.length === 1 ? '1 Verbindung anpassen' : `${targetConnections.length} Verbindungen anpassen`;
+        } else {
+            subtitle.textContent = `${targetNodes.length} Knoten und ${targetConnections.length} Verbindungen anpassen`;
+        }
+    }
+
+    // Size section: "Wenn nur mehrere Knoten ausgewählt sind, kann man auch die Größe der Knoten einheitlich ändern."
+    if (sizeSection) {
+        if (isOnlyNodes) {
+            sizeSection.style.display = 'block';
+            const first = targetNodes[0];
+            const widthInp = document.getElementById('format-width-input');
+            const heightInp = document.getElementById('format-height-input');
+            if (widthInp) widthInp.value = first.width || 120;
+            if (heightInp) heightInp.value = first.height || 60;
+            const applySize = document.getElementById('format-apply-size');
+            if (applySize) applySize.checked = true;
+        } else {
+            sizeSection.style.display = 'none';
+            const applySize = document.getElementById('format-apply-size');
+            if (applySize) applySize.checked = false;
+        }
+    }
+
+    // Pre-fill colors
+    const firstItem = targetNodes[0] || targetConnections[0];
+    const borderInput = document.getElementById('format-border-color-input');
+    const textInput = document.getElementById('format-text-color-input');
+
+    if (borderInput) {
+        borderInput.value = firstItem.color || '#0086cb';
+        borderInput._isDefault = false;
+    }
+    if (textInput) {
+        textInput.value = firstItem.textColor || '#000000';
+        textInput._isDefault = false;
+    }
+
+    const applyBorder = document.getElementById('format-apply-border-color');
+    const applyText = document.getElementById('format-apply-text-color');
+    if (applyBorder) applyBorder.checked = true;
+    if (applyText) applyText.checked = true;
+
+    dialog._formatTargets = {
+        nodeIds: targetNodes.map(n => n.id),
+        connKeys: targetConnections.map(c => getConnKey(c))
+    };
+
+    dialog.style.display = 'flex';
+}
+
+function closeMindmapFormatDialog() {
+    const dialog = document.getElementById('mindmap-format-dialog');
+    if (dialog) dialog.style.display = 'none';
+}
+
+function setFormatBorderColor(color) {
+    const input = document.getElementById('format-border-color-input');
+    if (input) {
+        input.value = color;
+        input._isDefault = false;
+    }
+    const chk = document.getElementById('format-apply-border-color');
+    if (chk) chk.checked = true;
+}
+
+function resetFormatBorderColor() {
+    const input = document.getElementById('format-border-color-input');
+    if (input) {
+        input.value = '#0086cb';
+        input._isDefault = true;
+    }
+    const chk = document.getElementById('format-apply-border-color');
+    if (chk) chk.checked = true;
+}
+
+function setFormatTextColor(color) {
+    const input = document.getElementById('format-text-color-input');
+    if (input) {
+        input.value = color;
+        input._isDefault = false;
+    }
+    const chk = document.getElementById('format-apply-text-color');
+    if (chk) chk.checked = true;
+}
+
+function resetFormatTextColor() {
+    const input = document.getElementById('format-text-color-input');
+    if (input) {
+        input.value = '#000000';
+        input._isDefault = true;
+    }
+    const chk = document.getElementById('format-apply-text-color');
+    if (chk) chk.checked = true;
+}
+
+function setFormatSizePreset(w, h) {
+    const widthInput = document.getElementById('format-width-input');
+    const heightInput = document.getElementById('format-height-input');
+    if (widthInput) widthInput.value = w;
+    if (heightInput) heightInput.value = h;
+    const chk = document.getElementById('format-apply-size');
+    if (chk) chk.checked = true;
+}
+
+function applyMindmapFormatting() {
+    const dialog = document.getElementById('mindmap-format-dialog');
+    if (!dialog || !dialog._formatTargets) return;
+
+    const { nodeIds, connKeys } = dialog._formatTargets;
+
+    const applyBorder = document.getElementById('format-apply-border-color')?.checked;
+    const applyText = document.getElementById('format-apply-text-color')?.checked;
+    const applySize = document.getElementById('format-apply-size')?.checked;
+
+    const borderInput = document.getElementById('format-border-color-input');
+    const textInput = document.getElementById('format-text-color-input');
+    const widthVal = parseFloat(document.getElementById('format-width-input')?.value) || 120;
+    const heightVal = parseFloat(document.getElementById('format-height-input')?.value) || 60;
+
+    const newBorderColor = borderInput?._isDefault ? null : borderInput?.value;
+    const newTextColor = textInput?._isDefault ? null : textInput?.value;
+
+    // Apply to Nodes
+    nodeIds.forEach(nid => {
+        const node = nodes.find(n => n.id === nid);
+        if (node) {
+            if (applyBorder) node.color = newBorderColor;
+            if (applyText) node.textColor = newTextColor;
+            if (applySize) {
+                node.width = Math.max(60, widthVal);
+                node.height = Math.max(30, heightVal);
+            }
+        }
+    });
+
+    // Apply to Connections
+    connKeys.forEach(key => {
+        const conn = connections.find(c => getConnKey(c) === key);
+        if (conn) {
+            if (applyBorder) conn.color = newBorderColor;
+            if (applyText) conn.textColor = newTextColor;
+        }
+    });
+
+    renderMindmap();
+    updateSelectionUI();
+    saveAppState();
+    closeMindmapFormatDialog();
+}
+
+// Copy & Paste Functions
+function copySelectedMindmapElements() {
+    let nodesToCopy = [];
+    if (selectedNodes.size > 0) {
+        nodesToCopy = nodes.filter(n => selectedNodes.has(n.id));
+    } else if (contextMenuTarget && contextMenuTarget.type === 'node') {
+        const n = nodes.find(x => x.id === contextMenuTarget.id);
+        if (n) nodesToCopy = [n];
+    }
+
+    if (nodesToCopy.length === 0) return;
+
+    const nodeIdsSet = new Set(nodesToCopy.map(n => n.id));
+
+    let minX = Infinity;
+    let minY = Infinity;
+    nodesToCopy.forEach(n => {
+        if (n.x < minX) minX = n.x;
+        if (n.y < minY) minY = n.y;
+    });
+
+    const clonedNodes = nodesToCopy.map(n => ({
+        oldId: n.id,
+        text: n.text,
+        width: n.width,
+        height: n.height,
+        color: n.color,
+        textColor: n.textColor,
+        relX: n.x - minX,
+        relY: n.y - minY,
+        origX: n.x,
+        origY: n.y
+    }));
+
+    const clonedConns = connections
+        .filter(c => nodeIdsSet.has(c.fromId) && nodeIdsSet.has(c.toId))
+        .map(c => ({
+            fromOldId: c.fromId,
+            toOldId: c.toId,
+            text: c.text,
+            color: c.color,
+            textColor: c.textColor
+        }));
+
+    mindmapClipboard = {
+        nodes: clonedNodes,
+        connections: clonedConns,
+        minX,
+        minY,
+        pasteCount: 0
+    };
+}
+
+function pasteMindmapElements(targetX = null, targetY = null) {
+    if (!mindmapClipboard || !mindmapClipboard.nodes || mindmapClipboard.nodes.length === 0) return;
+
+    mindmapClipboard.pasteCount++;
+
+    let baseX, baseY;
+    if (targetX !== null && targetY !== null) {
+        baseX = targetX;
+        baseY = targetY;
+    } else {
+        const offset = mindmapClipboard.pasteCount * 30;
+        baseX = mindmapClipboard.minX + offset;
+        baseY = mindmapClipboard.minY + offset;
+    }
+
+    if (isGridActive) {
+        baseX = Math.round(baseX / GRID_SIZE) * GRID_SIZE;
+        baseY = Math.round(baseY / GRID_SIZE) * GRID_SIZE;
+    }
+
+    const idMap = new Map();
+    const newNodes = [];
+
+    mindmapClipboard.nodes.forEach(item => {
+        const newId = nextNodeId++;
+        idMap.set(item.oldId, newId);
+
+        let posX = baseX + item.relX;
+        let posY = baseY + item.relY;
+        if (isGridActive) {
+            posX = Math.round(posX / GRID_SIZE) * GRID_SIZE;
+            posY = Math.round(posY / GRID_SIZE) * GRID_SIZE;
+        }
+
+        const newNode = {
+            id: newId,
+            x: posX,
+            y: posY,
+            text: item.text,
+            width: item.width || 120,
+            height: item.height || 60,
+            color: item.color || null,
+            textColor: item.textColor || null,
+            parentId: null,
+            collapsed: false
+        };
+        nodes.push(newNode);
+        newNodes.push(newNode);
+    });
+
+    mindmapClipboard.connections.forEach(item => {
+        const newFrom = idMap.get(item.fromOldId);
+        const newTo = idMap.get(item.toOldId);
+        if (newFrom && newTo) {
+            connections.push({
+                fromId: newFrom,
+                toId: newTo,
+                text: item.text || '',
+                color: item.color || null,
+                textColor: item.textColor || null
+            });
+            const childNode = nodes.find(n => n.id === newTo);
+            if (childNode && childNode.parentId === null) {
+                childNode.parentId = newFrom;
+            }
+        }
+    });
+
+    clearSelection();
+    newNodes.forEach(n => selectedNodes.add(n.id));
+
+    renderMindmap();
+    updateSelectionUI();
+    saveAppState();
+}
+
+function deleteSelectedMindmapElements() {
+    const total = selectedNodes.size + selectedConnections.size;
+    if (total === 0) return;
+
+    const msg = total === 1 ? 'Möchtest du das ausgewählte Element löschen?' : `Möchtest du die ${total} ausgewählten Elemente löschen?`;
+    if (!confirm(msg)) {
+        return;
+    }
+
+    const nodeIdsToDelete = new Set(selectedNodes);
+    const connKeysToDelete = new Set(selectedConnections);
+
+    // Delete selected connections
+    connections = connections.filter(c => {
+        const key = getConnKey(c);
+        if (connKeysToDelete.has(key)) return false;
+        if (nodeIdsToDelete.has(c.fromId) || nodeIdsToDelete.has(c.toId)) return false;
+        return true;
+    });
+
+    // Delete selected nodes
+    nodes = nodes.filter(n => !nodeIdsToDelete.has(n.id));
+
+    cleanupOrphanedParents();
+    clearSelection();
+    renderMindmap();
+    saveAppState();
 }
 
 function handleMenuDelete() {
     if (contextMenuTarget) {
         if (contextMenuTarget.type === 'node') {
             const nodeId = contextMenuTarget.id;
-            const hasChildren = nodeHasChildren(nodeId);
+            if (selectedNodes.size > 1 && selectedNodes.has(nodeId)) {
+                deleteSelectedMindmapElements();
+                hideContextMenu();
+                return;
+            }
 
+            const hasChildren = nodeHasChildren(nodeId);
             if (hasChildren) {
-                // Show delete mode dialog
                 showDeleteDialog(nodeId);
             } else {
                 if (confirm('Möchtest du diesen Knoten löschen?')) {
@@ -2202,10 +2931,19 @@ function handleMenuDelete() {
                 }
             }
         } else if (contextMenuTarget.type === 'connection') {
+            const conn = connections[contextMenuTarget.id];
+            const connKey = conn ? getConnKey(conn) : null;
+            if (selectedConnections.size > 1 && connKey && selectedConnections.has(connKey)) {
+                deleteSelectedMindmapElements();
+                hideContextMenu();
+                return;
+            }
+
             if (confirm('Verbindung löschen?')) {
                 connections.splice(contextMenuTarget.id, 1);
-                renderConnections();
-                updateAllCollapseButtons();
+                cleanupOrphanedParents();
+                clearSelection();
+                renderMindmap();
                 saveAppState();
             }
         }
@@ -2215,7 +2953,6 @@ function handleMenuDelete() {
 
 // Delete Dialog for nodes with children
 function showDeleteDialog(nodeId) {
-    // Remove existing dialog if present
     const existing = document.getElementById('delete-mode-dialog');
     if (existing) existing.remove();
 
@@ -2252,12 +2989,15 @@ function showDeleteDialog(nodeId) {
 
 // Delete only this node, orphan its children
 function deleteNodeOnly(id) {
-    // Orphan children (make them root nodes)
     nodes.forEach(n => {
         if (n.parentId === id) n.parentId = null;
     });
     nodes = nodes.filter(n => n.id !== id);
     connections = connections.filter(c => c.fromId !== id && c.toId !== id);
+
+    cleanupOrphanedParents();
+    selectedNodes.delete(id);
+    updateSelectionUI();
 
     const el = document.getElementById(`node-${id}`);
     if (el) el.remove();
@@ -2271,15 +3011,17 @@ function deleteNodeWithDescendants(id) {
     const descendantIds = getAllDescendantIds(id);
     const idsToDelete = new Set([id, ...descendantIds]);
 
-    // Remove all nodes and their DOM elements
     idsToDelete.forEach(nid => {
         const el = document.getElementById(`node-${nid}`);
         if (el) el.remove();
+        selectedNodes.delete(nid);
     });
 
     nodes = nodes.filter(n => !idsToDelete.has(n.id));
     connections = connections.filter(c => !idsToDelete.has(c.fromId) && !idsToDelete.has(c.toId));
 
+    cleanupOrphanedParents();
+    updateSelectionUI();
     renderMindmap();
     saveAppState();
 }
@@ -2291,31 +3033,25 @@ document.addEventListener('click', (e) => {
     }
 });
 
-
 function handleMenuNewNode() {
     if (contextMenuTarget && contextMenuTarget.type === 'background') {
-        // Convert screen coordinates to diagram coordinates
-        // use contextMenuTarget.x/y (screen) and account for viewState
         const x = (contextMenuTarget.x - viewState.x) / viewState.zoom;
         const y = (contextMenuTarget.y - viewState.y) / viewState.zoom;
-
         createNode(x, y);
     }
     hideContextMenu();
 }
 
-// Resets mindmap state without any confirmation dialog.
-// Use this for programmatic clearing (e.g. cloud sync, imports).
 function resetMindmapState() {
     nodes = [];
     connections = [];
     nodesLayer.innerHTML = '';
     svgLayer.innerHTML = '';
+    clearSelection();
     nextNodeId = 1;
     saveAppState();
 }
 
-// User-initiated clear: shows confirmation first.
 function clearMindmap() {
     if (confirm('Wirklich alles löschen?')) {
         resetMindmapState();
@@ -2328,13 +3064,23 @@ function serializeMindmapToXML() {
 
     xml += '  <nodes>\n';
     nodes.forEach(n => {
-        xml += `    <node id="${n.id}" x="${n.x}" y="${n.y}" width="${n.width}" height="${n.height}" color="${n.color || ''}" parentId="${n.parentId !== null && n.parentId !== undefined ? n.parentId : ''}">${n.text}</node>\n`;
+        const textEscaped = escapeXml(n.text || '');
+        const parentId = (n.parentId !== null && n.parentId !== undefined) ? n.parentId : '';
+        const color = n.color || '';
+        const textColor = n.textColor || '';
+        const width = n.width || 120;
+        const height = n.height || 60;
+        const collapsed = n.collapsed ? 'true' : 'false';
+        xml += `    <node id="${n.id}" x="${n.x}" y="${n.y}" width="${width}" height="${height}" color="${color}" textColor="${textColor}" parentId="${parentId}" collapsed="${collapsed}">${textEscaped}</node>\n`;
     });
     xml += '  </nodes>\n';
 
     xml += '  <connections>\n';
     connections.forEach(c => {
-        xml += `    <connection from="${c.fromId}" to="${c.toId}" text="${c.text || ''}" color="${c.color || ''}"/>\n`;
+        const text = escapeXml(c.text || '');
+        const color = c.color || '';
+        const textColor = c.textColor || '';
+        xml += `    <connection from="${c.fromId}" to="${c.toId}" text="${text}" color="${color}" textColor="${textColor}"/>\n`;
     });
     xml += '  </connections>\n';
 
@@ -2383,6 +3129,7 @@ function parseXML(text) {
         connections = [];
         nodesLayer.innerHTML = '';
         svgLayer.innerHTML = '';
+        clearSelection();
 
         // Nodes
         const nodeEls = xmlDoc.getElementsByTagName("node");
@@ -2392,13 +3139,17 @@ function parseXML(text) {
             const id = parseInt(el.getAttribute("id"));
             const x = parseFloat(el.getAttribute("x"));
             const y = parseFloat(el.getAttribute("y"));
+            const width = parseFloat(el.getAttribute("width")) || 120;
+            const height = parseFloat(el.getAttribute("height")) || 60;
             const color = el.getAttribute("color") || null;
+            const textColor = el.getAttribute("textColor") || null;
             const content = el.textContent;
 
             const parentIdAttr = el.getAttribute("parentId");
             const parentId = parentIdAttr && parentIdAttr !== '' ? parseInt(parentIdAttr) : null;
+            const collapsed = el.getAttribute("collapsed") === "true";
 
-            nodes.push({ id, x, y, text: content, width: 120, height: 60, color, parentId, collapsed: false });
+            nodes.push({ id, x, y, text: content, width, height, color, textColor, parentId, collapsed });
             if (id > maxId) maxId = id;
         }
         nextNodeId = maxId + 1;
@@ -2411,12 +3162,14 @@ function parseXML(text) {
             const to = parseInt(el.getAttribute("to"));
             const text = el.getAttribute("text") || '';
             const color = el.getAttribute("color") || null;
-            connections.push({ fromId: from, toId: to, text, color });
+            const textColor = el.getAttribute("textColor") || null;
+            connections.push({ fromId: from, toId: to, text, color, textColor });
         }
 
+        cleanupOrphanedParents();
+
         // Re-render
-        nodes.forEach(n => renderNode(n));
-        renderConnections();
+        renderMindmap();
         saveAppState();
 
     } catch (err) {
@@ -2518,7 +3271,7 @@ async function exportPDF() {
             label.style.background = '#fff';
             label.style.padding = '2px 4px';
             label.style.fontSize = '0.8rem';
-            label.style.color = '#64748b';
+            label.style.color = conn.textColor || '#64748b';
             label.style.zIndex = 10;
             tempContainer.appendChild(label);
         }
@@ -2549,7 +3302,7 @@ async function exportPDF() {
 
         // Font style
         el.style.fontSize = '0.9rem';
-        el.style.color = '#1e293b';
+        el.style.color = node.textColor || '#1e293b';
 
         tempContainer.appendChild(el);
     });
