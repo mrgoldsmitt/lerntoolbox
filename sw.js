@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lerntoolbox-v24';
+const CACHE_NAME = 'lerntoolbox-v26';
 
 // CRITICAL: These MUST exist for the app to run. Install will fail if these fail.
 const ASSETS_CRITICAL = [
@@ -157,6 +157,28 @@ self.addEventListener('fetch', (event) => {
             { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
           );
         }
+      })()
+    );
+    return;
+  }
+
+  // Core Code (script.js, style.css) - Network First to ensure immediate updates
+  const isCoreAsset = event.request.url.includes('script.js') || event.request.url.includes('style.css');
+  if (isCoreAsset) {
+    event.respondWith(
+      (async () => {
+        try {
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && networkResponse.status === 200) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          }
+        } catch (e) {
+          // Fallback to cache when offline
+        }
+        const cache = await caches.open(CACHE_NAME);
+        return cache.match(event.request, { ignoreSearch: true });
       })()
     );
     return;

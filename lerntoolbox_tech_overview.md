@@ -12,7 +12,7 @@ tags:
   - domain/education
   - license/cc-by-nc-4.0
 type: web-application-architecture
-version: "0.10.4"
+version: "0.10.5"
 status: production-ready
 stack:
   frontend: "Vanilla HTML5, CSS3, JavaScript (SPA, PWA Offline-First)"
@@ -23,7 +23,7 @@ stack:
 repository_path: "/Users/mrgoldsmitt/Projekte/Lerntoolbox/lerntoolbox"
 github: "https://github.com/mrgoldsmitt/lerntoolbox"
 created_date: 2026-08-16
-last_updated: 2026-10-31
+last_updated: 2026-11-01
 ---
 
 # 📖 Lerntoolbox: Technische Gesamtdokumentation & Architektur
@@ -163,6 +163,11 @@ Wenn du als KI an diesem Repository arbeitest, halte dich an folgende Regeln:
 ---
 
 ## 9. Changelog
+
+### Version 0.10.5 (2026-11-01)
+- **Verbesserung Mindmap-Mehrfachauswahl (Desktop & Touch)**: Robuste Mehrfachauswahl auf Desktop (`Strg`/`Ctrl` unter Windows bzw. `Cmd`/`Control` auf dem Mac + Linksklick) und auf Touchscreens (langes Drücken für Kontextmenü „Zur Auswahl hinzufügen“ / „Aus Auswahl entfernen“). Klicks auf bereits markierte Knoten verwerfen die restliche Auswahl nicht mehr. Unterdrückung synthetischer Touch-Klicks verhindert das versehentliche Schließen des Menüs beim Finger-Heben. Deutliche optische Markierung durch soliden Rahmen und Checkmark-Badge.
+- **Verbesserung & Bugfix Knotengröße speichern (Desktop & Mobil)**: Knotengrößen (Breite und Höhe) können nun sowohl auf dem Desktop als auch mobil direkt über das Dialogfenster „Knoten formatieren (Farbe & Größe)“ bzw. „Auswahl formatieren“ präzise angepasst werden. Touch-Resize-Handles wurden auf 28px vergrößert und durch `touchmove`-Prävention mobil bedienbar gemacht. Alle Größenänderungen werden zuverlässig in LocalStorage, im XML-Export und im Cloud-Sync persistent gespeichert.
+- **PWA Service Worker Cache-Optimierung**: Umstellung der Kernressourcen (`script.js`, `style.css`) auf Network-First und Cache-Update auf `lerntoolbox-v26`, sodass neue Releases und Bugfixes sofort im Browser geladen werden, anstatt veraltete Cache-Dateien auszuliefern.
 
 ### Version 0.10.4 (2026-10-31)
 - **Mindmap-Mehrfachauswahl & einheitliche Formatierung**: Knoten und Verbindungen können nun über `Strg`/`Cmd`-Klick oder das Kontextmenü („Zur Auswahl hinzufügen“) mehrfach ausgewählt werden (optimiert für Touchscreens). Die Auswahl kann gleichzeitig bezüglich Rahmen-/Linienfarbe und Schriftfarbe formatiert werden. Wenn nur Knoten ausgewählt sind, lässt sich auch deren Größe einheitlich anpassen. Auswahl-Aktionsleiste (`#mindmap-selection-bar`) und Formatierungsdialog mit Presets. Unterstützung für synchrones Multi-Drag und Multi-Resize.

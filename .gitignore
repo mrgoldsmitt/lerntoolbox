@@ -48,6 +48,7 @@ secrets/
 *.sublime-project
 *.sublime-workspace
 *.swp
+scratch/
 *.swo
 *~
 

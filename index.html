@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="Lerntoolbox">
 
     <title>Lerntoolbox</title>
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=0.10.5">
     <link rel="stylesheet" href="css/digiboard.css">
 
 
@@ -215,7 +215,7 @@
         </div>
 
         <div style="margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem; text-align: left;">
-            <p>&copy; 2026 mrgoldsmitt <span style="font-size: 0.85em; opacity: 0.7; margin-left: 4px;">v.0.10.4</span>
+            <p>&copy; 2026 mrgoldsmitt <span style="font-size: 0.85em; opacity: 0.7; margin-left: 4px;">v.0.10.5</span>
             </p>
             <div style="font-size: 0.75rem; margin-bottom: 0.4rem;">
                 <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.de" target="_blank" rel="noopener noreferrer" style="color: var(--text-muted); text-decoration: underline;" title="Creative Commons Namensnennung - Nicht-kommerziell 4.0 International">CC BY-NC 4.0 Lizenz</a>
@@ -308,7 +308,7 @@
                     d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.55-.77 1.25-1.57-.23-.63-.09-1.33.4-1.89l1.1-1.28c.63-.73 1.62-1.03 2.53-.8 1.94.49 4.72-1.4 4.72-4.46 0-5.52-4.48-10-10-10z">
                 </path>
             </svg>
-            <span id="menu-format-selection-label">Auswahl formatieren...</span>
+            <span id="menu-format-selection-label">Formatieren (Farbe & Größe)...</span>
         </div>
         <div class="menu-item" id="menu-copy" onclick="handleMenuCopy()">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
@@ -502,7 +502,6 @@
                 <button type="button" class="btn-primary" onclick="applyMindmapFormatting()">Übernehmen</button>
             </div>
         </div>
-    </div>
     </div>
 
     <!-- Move Card Dialog -->
@@ -1988,7 +1987,15 @@
             <div class="card"
                 style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--card-border); max-height: 70vh; overflow-y: auto;">
 
-                <h3 style="color: var(--primary); margin-top: 0;">Version 0.10.4</h3>
+                <h3 style="color: var(--primary); margin-top: 0;">Version 0.10.5</h3>
+                <ul
+                    style="margin-bottom: 1.5rem; list-style-type: disc; margin-left: 1.5rem; color: var(--text-muted);">
+                    <li><strong>Verbesserung Mindmap-Mehrfachauswahl (Desktop &amp; Touch):</strong> Robuste Mehrfachauswahl auf Desktop (<code>Strg</code>/<code>Ctrl</code> unter Windows bzw. <code>Cmd</code>/<code>Control</code> auf dem Mac + Linksklick) und auf Touchscreens (langes Drücken für Kontextmenü „Zur Auswahl hinzufügen“ / „Aus Auswahl entfernen“). Klicks auf bereits markierte Knoten verwerfen die restliche Auswahl nicht mehr. Unterdrückung synthetischer Touch-Klicks verhindert das versehentliche Schließen des Menüs beim Finger-Heben. Deutliche optische Markierung durch soliden Rahmen und Checkmark-Badge.</li>
+                    <li><strong>Verbesserung &amp; Bugfix Knotengröße speichern (Desktop &amp; Mobil):</strong> Knotengrößen (Breite und Höhe) können nun sowohl auf dem Desktop als auch mobil direkt über das Dialogfenster „Knoten formatieren (Farbe &amp; Größe)“ bzw. „Auswahl formatieren“ präzise angepasst werden. Touch-Resize-Handles wurden auf 28px vergrößert und durch <code>touchmove</code>-Prävention mobil bedienbar gemacht. Alle Größenänderungen werden zuverlässig in LocalStorage, im XML-Export und im Cloud-Sync persistent gespeichert.</li>
+                    <li><strong>PWA Service Worker Cache-Optimierung:</strong> Umstellung der Kernressourcen (<code>script.js</code>, <code>style.css</code>) auf Network-First, sodass neue Releases und Bugfixes sofort im Browser geladen werden, anstatt veraltete Cache-Dateien auszuliefern.</li>
+                </ul>
+
+                <h3>Version 0.10.4</h3>
                 <ul
                     style="margin-bottom: 1.5rem; list-style-type: disc; margin-left: 1.5rem; color: var(--text-muted);">
                     <li><strong>Neu: Mindmap-Mehrfachauswahl & gemeinsame Formatierung:</strong> Mehrere Knoten und Verbindungen können gleichzeitig markiert werden (per <code>Strg</code>/<code>Cmd</code>-Klick oder über das Kontextmenü „Zur Auswahl hinzufügen“, optimal für Touchscreens). Die Auswahl kann gemeinsam formatiert werden (Rahmen-/Linienfarbe, Schriftfarbe). Sind ausschließlich Knoten ausgewählt, kann auch deren Größe (Breite und Höhe) einheitlich geändert werden. Zudem können markierte Knoten gemeinsam verschoben oder synchron skaliert werden.</li>
@@ -2817,7 +2824,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="js/qrcode.min.js"></script>
     <script src="js/qrcode_tool.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=0.10.5"></script>
 
     <!-- DigiBoard Scripts (Non-Module for file:// support) -->
     <script src="js/digiboard/widgets/BaseWidget.js"></script>

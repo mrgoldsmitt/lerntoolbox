@@ -234,20 +234,27 @@ function showContextMenu(e, type, id) {
             }
         }
 
-        if (totalSelected > 1 || (totalSelected >= 1 && isTargetSelected)) {
-            if (menuFormatSel) {
-                menuFormatSel.style.display = 'flex';
-                if (menuFormatSelLabel) menuFormatSelLabel.textContent = 'Auswahl formatieren...';
+        if (menuFormatSel) {
+            menuFormatSel.style.display = 'flex';
+            if (menuFormatSelLabel) {
+                if (totalSelected > 1 || (totalSelected >= 1 && isTargetSelected)) {
+                    menuFormatSelLabel.textContent = 'Auswahl formatieren...';
+                } else if (type === 'node') {
+                    menuFormatSelLabel.textContent = 'Knoten formatieren (Farbe & Größe)...';
+                } else {
+                    menuFormatSelLabel.textContent = 'Verbindung formatieren...';
+                }
             }
-            if (menuColor) menuColor.style.display = 'none';
+        }
+        if (menuColor) menuColor.style.display = 'none';
+
+        if (totalSelected > 1 || (totalSelected >= 1 && isTargetSelected)) {
             if (menuClearSel) menuClearSel.style.display = 'flex';
             if (menuCopy) {
                 menuCopy.style.display = 'flex';
                 if (menuCopyLabel) menuCopyLabel.textContent = 'Auswahl kopieren';
             }
         } else {
-            if (menuFormatSel) menuFormatSel.style.display = 'none';
-            if (menuColor) menuColor.style.display = 'flex';
             if (menuClearSel) menuClearSel.style.display = totalSelected > 0 ? 'flex' : 'none';
             if (menuCopy) {
                 menuCopy.style.display = type === 'node' ? 'flex' : 'none';
@@ -544,8 +551,8 @@ function loadAppState() {
         if (state.mindmap) {
             nodes = (state.mindmap.nodes || []).map(n => ({
                 ...n,
-                width: n.width || 120,
-                height: n.height || 60,
+                width: Math.round(n.width) || 120,
+                height: Math.round(n.height) || 60,
                 color: n.color || null,
                 textColor: n.textColor || null,
                 parentId: n.parentId !== undefined ? n.parentId : null,
@@ -1891,33 +1898,54 @@ function renderNode(node) {
 
 
         // Context Menu (Desktop)
-        el.addEventListener('contextmenu', (e) => showContextMenu(e, 'node', node.id));
+        el.addEventListener('contextmenu', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleNodeSelection(node.id);
+                return;
+            }
+            showContextMenu(e, 'node', node.id);
+        });
 
         // Long Press for Context Menu (Touch)
-        let pressTimer;
+        let pressTimer = null;
+        let longPressTriggered = false;
         let startX, startY;
 
         el.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
+                longPressTriggered = false;
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
                 pressTimer = setTimeout(() => {
+                    longPressTriggered = true;
                     showContextMenu(e.touches[0], 'node', node.id);
-                }, 600);
+                }, 500);
             }
         }, { passive: false });
 
-        el.addEventListener('touchend', () => clearTimeout(pressTimer));
+        el.addEventListener('touchend', (e) => {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+                pressTimer = null;
+            }
+            if (longPressTriggered) {
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+                longPressTriggered = false;
+            }
+        });
 
         el.addEventListener('touchmove', (e) => {
             if (e.touches.length === 1) {
                 const moveX = e.touches[0].clientX;
                 const moveY = e.touches[0].clientY;
                 if (Math.abs(moveX - startX) > 10 || Math.abs(moveY - startY) > 10) {
-                    clearTimeout(pressTimer);
+                    if (pressTimer) clearTimeout(pressTimer);
                 }
             } else {
-                clearTimeout(pressTimer);
+                if (pressTimer) clearTimeout(pressTimer);
             }
         }, { passive: false });
     }
@@ -2103,6 +2131,9 @@ function makeDraggable(el, id) {
         if (e.ctrlKey || e.metaKey) return;
 
         if (!hasDragged) {
+            if (selectedNodes.size > 1 && selectedNodes.has(id)) {
+                return;
+            }
             selectNode(id, false);
         }
     });
@@ -2213,18 +2244,18 @@ function makeResizable(handle, id, pos) {
         }
 
         // Update Model
-        node.width = newW;
-        node.height = newH;
-        node.x = newX;
-        node.y = newY;
+        node.width = Math.round(newW);
+        node.height = Math.round(newH);
+        node.x = Math.round(newX);
+        node.y = Math.round(newY);
 
         // Update View
         const el = document.getElementById(`node-${id}`);
         if (el) {
-            el.style.width = `${newW}px`;
-            el.style.height = `${newH}px`;
-            el.style.left = `${newX}px`;
-            el.style.top = `${newY}px`;
+            el.style.width = `${node.width}px`;
+            el.style.height = `${node.height}px`;
+            el.style.left = `${node.x}px`;
+            el.style.top = `${node.y}px`;
         }
 
         // Synchronize resize if multiple nodes are selected
@@ -2233,12 +2264,12 @@ function makeResizable(handle, id, pos) {
                 if (otherId !== id) {
                     const otherNode = nodes.find(n => n.id === otherId);
                     if (otherNode) {
-                        otherNode.width = newW;
-                        otherNode.height = newH;
+                        otherNode.width = Math.round(newW);
+                        otherNode.height = Math.round(newH);
                         const otherEl = document.getElementById(`node-${otherId}`);
                         if (otherEl) {
-                            otherEl.style.width = `${newW}px`;
-                            otherEl.style.height = `${newH}px`;
+                            otherEl.style.width = `${otherNode.width}px`;
+                            otherEl.style.height = `${otherNode.height}px`;
                         }
                     }
                 }
@@ -2249,6 +2280,7 @@ function makeResizable(handle, id, pos) {
     };
 
     const resizeEnd = () => {
+        if (!isResizing) return;
         isResizing = false;
         saveAppState();
     };
@@ -2268,6 +2300,7 @@ function makeResizable(handle, id, pos) {
     // Touch
     handle.addEventListener('touchstart', (e) => {
         e.stopPropagation();
+        if (e.cancelable) e.preventDefault();
         if (e.touches.length === 1) {
             resizeStart(e.touches[0].clientX, e.touches[0].clientY);
         }
@@ -2276,11 +2309,16 @@ function makeResizable(handle, id, pos) {
     window.addEventListener('touchmove', (e) => {
         if (isResizing) {
             e.stopPropagation();
+            if (e.cancelable) e.preventDefault();
             resizeMove(e.touches[0].clientX, e.touches[0].clientY);
         }
     }, { passive: false });
 
-    window.addEventListener('touchend', resizeEnd);
+    window.addEventListener('touchend', (e) => {
+        if (isResizing) {
+            resizeEnd();
+        }
+    });
 }
 
 // Connections
@@ -2358,7 +2396,15 @@ function renderConnections() {
         // Create Group
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.setAttribute('class', 'connection-group' + (isConnSel ? ' selected' : ''));
-        group.addEventListener('contextmenu', (e) => showContextMenu(e, 'connection', index));
+        group.addEventListener('contextmenu', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleConnectionSelection(conn);
+                return;
+            }
+            showContextMenu(e, 'connection', index);
+        });
 
         // Click to select connection
         group.addEventListener('click', (e) => {
@@ -2366,35 +2412,51 @@ function renderConnections() {
             if (e.ctrlKey || e.metaKey) {
                 toggleConnectionSelection(conn);
             } else {
+                if (selectedConnections.size > 1 && selectedConnections.has(connKey)) {
+                    return;
+                }
                 selectConnection(conn, false);
             }
         });
 
         // Long Press for Context Menu (Touch) - Connection
-        let connPressTimer;
+        let connPressTimer = null;
+        let connLongPressTriggered = false;
         let connStartX, connStartY;
 
         group.addEventListener('touchstart', (e) => {
             if (e.touches.length === 1) {
+                connLongPressTriggered = false;
                 connStartX = e.touches[0].clientX;
                 connStartY = e.touches[0].clientY;
                 connPressTimer = setTimeout(() => {
+                    connLongPressTriggered = true;
                     showContextMenu(e.touches[0], 'connection', index);
-                }, 600);
+                }, 500);
             }
         }, { passive: false });
 
-        group.addEventListener('touchend', () => clearTimeout(connPressTimer));
+        group.addEventListener('touchend', (e) => {
+            if (connPressTimer) {
+                clearTimeout(connPressTimer);
+                connPressTimer = null;
+            }
+            if (connLongPressTriggered) {
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
+                connLongPressTriggered = false;
+            }
+        });
 
         group.addEventListener('touchmove', (e) => {
             if (e.touches.length === 1) {
                 const moveX = e.touches[0].clientX;
                 const moveY = e.touches[0].clientY;
                 if (Math.abs(moveX - connStartX) > 10 || Math.abs(moveY - connStartY) > 10) {
-                    clearTimeout(connPressTimer);
+                    if (connPressTimer) clearTimeout(connPressTimer);
                 }
             } else {
-                clearTimeout(connPressTimer);
+                if (connPressTimer) clearTimeout(connPressTimer);
             }
         }, { passive: false });
 
@@ -2562,17 +2624,32 @@ function openMindmapFormatDialog(target = null) {
     let targetNodes = [];
     let targetConnections = [];
 
-    if (selectedNodes.size > 0 || selectedConnections.size > 0) {
+    if (contextMenuTarget && (contextMenuTarget.type === 'node' || contextMenuTarget.type === 'connection')) {
+        let isTargetSelected = false;
+        if (contextMenuTarget.type === 'node') {
+            isTargetSelected = selectedNodes.has(contextMenuTarget.id);
+        } else if (contextMenuTarget.type === 'connection') {
+            const conn = connections[contextMenuTarget.id];
+            isTargetSelected = conn ? isConnectionSelected(conn) : false;
+        }
+
+        if (isTargetSelected && (selectedNodes.size > 1 || selectedConnections.size > 0)) {
+            // Target is part of an active multi-selection: format all selected items
+            targetNodes = nodes.filter(n => selectedNodes.has(n.id));
+            targetConnections = connections.filter(c => selectedConnections.has(getConnKey(c)));
+        } else {
+            // Target was individually clicked: format only this target
+            if (contextMenuTarget.type === 'node') {
+                const n = nodes.find(x => x.id === contextMenuTarget.id);
+                if (n) targetNodes = [n];
+            } else if (contextMenuTarget.type === 'connection') {
+                const c = connections[contextMenuTarget.id];
+                if (c) targetConnections = [c];
+            }
+        }
+    } else if (selectedNodes.size > 0 || selectedConnections.size > 0) {
         targetNodes = nodes.filter(n => selectedNodes.has(n.id));
         targetConnections = connections.filter(c => selectedConnections.has(getConnKey(c)));
-    } else if (contextMenuTarget) {
-        if (contextMenuTarget.type === 'node') {
-            const n = nodes.find(x => x.id === contextMenuTarget.id);
-            if (n) targetNodes = [n];
-        } else if (contextMenuTarget.type === 'connection') {
-            const c = connections[contextMenuTarget.id];
-            if (c) targetConnections = [c];
-        }
     }
 
     if (targetNodes.length === 0 && targetConnections.length === 0 && target) {
@@ -2596,7 +2673,7 @@ function openMindmapFormatDialog(target = null) {
     const isOnlyNodes = targetNodes.length > 0 && targetConnections.length === 0;
 
     if (title) {
-        title.textContent = (targetNodes.length + targetConnections.length > 1) ? 'Auswahl formatieren' : 'Formatierung';
+        title.textContent = (targetNodes.length + targetConnections.length > 1) ? 'Auswahl formatieren' : (isOnlyNodes ? 'Knoten formatieren' : 'Verbindung formatieren');
     }
 
     if (subtitle) {
@@ -2609,15 +2686,15 @@ function openMindmapFormatDialog(target = null) {
         }
     }
 
-    // Size section: "Wenn nur mehrere Knoten ausgewählt sind, kann man auch die Größe der Knoten einheitlich ändern."
+    // Size section: Available whenever ONLY nodes are in the target list (1 or more nodes)
     if (sizeSection) {
         if (isOnlyNodes) {
             sizeSection.style.display = 'block';
             const first = targetNodes[0];
             const widthInp = document.getElementById('format-width-input');
             const heightInp = document.getElementById('format-height-input');
-            if (widthInp) widthInp.value = first.width || 120;
-            if (heightInp) heightInp.value = first.height || 60;
+            if (widthInp) widthInp.value = Math.round(first.width) || 120;
+            if (heightInp) heightInp.value = Math.round(first.height) || 60;
             const applySize = document.getElementById('format-apply-size');
             if (applySize) applySize.checked = true;
         } else {
@@ -2733,8 +2810,8 @@ function applyMindmapFormatting() {
             if (applyBorder) node.color = newBorderColor;
             if (applyText) node.textColor = newTextColor;
             if (applySize) {
-                node.width = Math.max(60, widthVal);
-                node.height = Math.max(30, heightVal);
+                node.width = Math.max(60, Math.round(widthVal));
+                node.height = Math.max(30, Math.round(heightVal));
             }
         }
     });
@@ -3068,8 +3145,8 @@ function serializeMindmapToXML() {
         const parentId = (n.parentId !== null && n.parentId !== undefined) ? n.parentId : '';
         const color = n.color || '';
         const textColor = n.textColor || '';
-        const width = n.width || 120;
-        const height = n.height || 60;
+        const width = Math.round(n.width) || 120;
+        const height = Math.round(n.height) || 60;
         const collapsed = n.collapsed ? 'true' : 'false';
         xml += `    <node id="${n.id}" x="${n.x}" y="${n.y}" width="${width}" height="${height}" color="${color}" textColor="${textColor}" parentId="${parentId}" collapsed="${collapsed}">${textEscaped}</node>\n`;
     });
@@ -3139,8 +3216,8 @@ function parseXML(text) {
             const id = parseInt(el.getAttribute("id"));
             const x = parseFloat(el.getAttribute("x"));
             const y = parseFloat(el.getAttribute("y"));
-            const width = parseFloat(el.getAttribute("width")) || 120;
-            const height = parseFloat(el.getAttribute("height")) || 60;
+            const width = Math.round(parseFloat(el.getAttribute("width"))) || 120;
+            const height = Math.round(parseFloat(el.getAttribute("height"))) || 60;
             const color = el.getAttribute("color") || null;
             const textColor = el.getAttribute("textColor") || null;
             const content = el.textContent;

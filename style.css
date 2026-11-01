@@ -929,15 +929,41 @@ input:checked+.slider:before {
 
 /* Mindmap Multi-selection & Format Styles */
 .mindmap-node.selected {
-  outline: 2px dashed var(--primary);
-  outline-offset: 4px;
-  box-shadow: 0 0 14px rgba(0, 134, 203, 0.45) !important;
+  outline: 3px solid var(--primary) !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 16px rgba(0, 134, 203, 0.6) !important;
   z-index: 25;
 }
 
 body.light-mode .mindmap-node.selected {
-  outline-color: var(--flb-cyan);
-  box-shadow: 0 0 14px rgba(0, 134, 203, 0.4) !important;
+  outline: 3px solid var(--flb-cyan) !important;
+  box-shadow: 0 0 16px rgba(0, 134, 203, 0.5) !important;
+}
+
+.mindmap-node.selected::before {
+  content: '\2713';
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 22px;
+  height: 22px;
+  background: var(--primary);
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: bold;
+  line-height: 22px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  z-index: 40;
+  pointer-events: none;
+}
+
+@media (pointer: coarse) {
+  .resize-handle {
+    width: 26px !important;
+    height: 26px !important;
+  }
 }
 
 .connection-group.selected .visual-line {
