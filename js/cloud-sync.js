@@ -265,7 +265,7 @@ function clearToolState(toolName) {
     }
 }
 
-async function fetchAllCloudProjects() {
+async function fetchAllCloudProjects(loadActiveProject = false) {
     const { ok, data } = await fetchAPI('/api/projects');
     if (!ok) return;
 
@@ -280,6 +280,8 @@ async function fetchAllCloudProjects() {
         const selectEl = document.getElementById(`cloud-dropdown-${tool}`);
         if (!selectEl) return;
         
+        const currentVal = selectEl.value;
+        
         // Keep first option
         selectEl.innerHTML = `<option value="">-- Cloud-Projekte --</option>`;
         
@@ -293,13 +295,18 @@ async function fetchAllCloudProjects() {
 
         // Restore last selected project from localStorage
         const lastProjectId = localStorage.getItem(`cloud_last_project_${tool}`);
-        if (lastProjectId && toolProjects.some(p => p.id === lastProjectId)) {
-            selectEl.value = lastProjectId;
-            // Load the data from the cloud to overwrite any stale local state
-            loadProjectData(lastProjectId, tool);
+        const targetId = currentVal || lastProjectId;
+        if (targetId && toolProjects.some(p => p.id === targetId)) {
+            selectEl.value = targetId;
+            // Only load data if explicitly requested (e.g. login or initial page restore)
+            if (loadActiveProject) {
+                loadProjectData(targetId, tool);
+            }
         } else {
             selectEl.value = "";
-            clearToolState(tool);
+            if (loadActiveProject) {
+                clearToolState(tool);
+            }
         }
     });
 }
@@ -309,7 +316,7 @@ const originalUpdateAuthUI = updateAuthUI;
 updateAuthUI = function(isLoggedIn) {
     originalUpdateAuthUI(isLoggedIn);
     if (isLoggedIn) {
-        fetchAllCloudProjects();
+        fetchAllCloudProjects(true);
     }
 };
 
@@ -324,7 +331,11 @@ async function handleCloudProjectSelect(toolName, projectId) {
 }
 
 async function saveToCloud(toolName, forceNew = false) {
-    if (!currentUser) return;
+    if (!currentUser) {
+        if (typeof saveAppState === 'function') saveAppState();
+        alert('Projekt wurde lokal im Browser gesichert. Bitte melde dich an, um es dauerhaft in der Cloud zu speichern.');
+        return;
+    }
     
     const selectEl = document.getElementById(`cloud-dropdown-${toolName}`);
     const selectedProjectId = selectEl ? selectEl.value : '';
@@ -370,22 +381,22 @@ async function saveToCloud(toolName, forceNew = false) {
     });
     
     if (ok) {
-        alert('Erfolgreich in der Cloud gespeichert!');
-        const oldId = selectedProjectId;
-        await fetchAllCloudProjects();
-        let activeId = null;
-        if (selectEl) {
-            if (isNew && data.id) {
-                selectEl.value = data.id;
-                activeId = data.id;
-            } else if (oldId) {
-                selectEl.value = oldId;
-                activeId = oldId;
-            }
-        }
+        const activeId = (isNew && data.id) ? data.id : selectedProjectId;
         if (activeId) {
             localStorage.setItem(`cloud_last_project_${toolName}`, activeId);
         }
+        if (selectEl && activeId) {
+            selectEl.value = activeId;
+        }
+        if (typeof saveAppState === 'function') {
+            saveAppState();
+        }
+        // Refresh dropdown without reloading/clearing the canvas state!
+        await fetchAllCloudProjects(false);
+        if (selectEl && activeId) {
+            selectEl.value = activeId;
+        }
+        alert('Erfolgreich in der Cloud gespeichert!');
     } else {
         alert('Fehler beim Speichern: ' + (data.error || 'Unbekannt'));
     }
@@ -417,7 +428,7 @@ async function renameCloudProject(toolName) {
             return;
         }
         
-        await fetchAllCloudProjects();
+        await fetchAllCloudProjects(false);
     } catch (e) {
         console.error(e);
         alert('Ein Fehler ist aufgetreten.');
@@ -451,8 +462,9 @@ async function deleteCloudProject(toolName) {
         }
         
         clearToolState(toolName);
+        localStorage.removeItem(`cloud_last_project_${toolName}`);
         
-        await fetchAllCloudProjects();
+        await fetchAllCloudProjects(false);
     } catch (e) {
         console.error(e);
         alert('Ein Fehler ist aufgetreten.');

@@ -12,7 +12,7 @@ tags:
   - domain/education
   - license/cc-by-nc-4.0
 type: web-application-architecture
-version: "0.10.5"
+version: "0.10.6"
 status: production-ready
 stack:
   frontend: "Vanilla HTML5, CSS3, JavaScript (SPA, PWA Offline-First)"
@@ -163,6 +163,12 @@ Wenn du als KI an diesem Repository arbeitest, halte dich an folgende Regeln:
 ---
 
 ## 9. Changelog
+
+### Version 0.10.6 (2026-11-01)
+- **Behebung Mindmap-Größenspeicherung (Desktop & Mobil)**: Ursache für das Zurückspringen von Knotengrößen beim Speichern behoben: Nach dem Speichern in der Cloud wurde das Projekt durch eine Neuladefunktion versehentlich mit veralteten Daten überschrieben. Nun wird das Mindmap-Projekt synchron gespeichert, ohne den aktiven Arbeitsstand im Canvas zu verwerfen oder zurückzusetzen. Auch für nicht angemeldete Benutzer wird der Zustand beim Klick auf „Speichern“ zuverlässig lokal gesichert.
+- **Behebung Touch-Mehrfachauswahl & Klick-Schutz**: Auf Mobilgeräten und Touchscreens führte das Schließen des Kontextmenüs zu synthetischen Klick-Ereignissen auf den darunterliegenden Hintergrund, wodurch die Auswahl sofort wieder aufgehoben wurde. Ein Klick-Schutzschild (Event-Propagation-Stop und temporäre Klick-Sperre) stellt sicher, dass „Zur Auswahl hinzufügen“ und „Aus Auswahl entfernen“ auf Touchscreens dauerhaft aktiv bleiben.
+- **Verbesserte Tastatur-Mehrfachauswahl & Resize-Handles**: Desktop-Mehrfachauswahl unterstützt nun neben `Strg` (Windows) und `Cmd` (Mac) auch die `Umschalttaste` (Shift) bei Klick und Kontextmenü. Zudem wurde der Verbindungspunkt (Port) an die rechte Kantenmitte verlegt und ein dedizierter Resize-Handle unten rechts (`br`) hinzugefügt, sodass alle vier Ecken und Kanten auf Desktop und Mobilgeräten frei und intuitiv bedienbar sind.
+- **PWA-Cache**: Erhöhung des Cache-Namens im Service Worker auf `lerntoolbox-v27`.
 
 ### Version 0.10.5 (2026-11-01)
 - **Verbesserung Mindmap-Mehrfachauswahl (Desktop & Touch)**: Robuste Mehrfachauswahl auf Desktop (`Strg`/`Ctrl` unter Windows bzw. `Cmd`/`Control` auf dem Mac + Linksklick) und auf Touchscreens (langes Drücken für Kontextmenü „Zur Auswahl hinzufügen“ / „Aus Auswahl entfernen“). Klicks auf bereits markierte Knoten verwerfen die restliche Auswahl nicht mehr. Unterdrückung synthetischer Touch-Klicks verhindert das versehentliche Schließen des Menüs beim Finger-Heben. Deutliche optische Markierung durch soliden Rahmen und Checkmark-Badge.

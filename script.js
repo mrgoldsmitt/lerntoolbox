@@ -268,7 +268,14 @@ function showContextMenu(e, type, id) {
     showMenuAt(clientX, clientY);
 }
 
-function handleMenuToggleSelection() {
+let lastMenuActionTime = 0;
+
+function handleMenuToggleSelection(e) {
+    if (e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+    }
+    lastMenuActionTime = Date.now();
     if (!contextMenuTarget) return;
     if (contextMenuTarget.type === 'node') {
         toggleNodeSelection(contextMenuTarget.id);
@@ -279,17 +286,42 @@ function handleMenuToggleSelection() {
     hideContextMenu();
 }
 
-function handleMenuFormatSelection() {
+function handleMenuClearSelection(e) {
+    if (e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+    }
+    lastMenuActionTime = Date.now();
+    clearSelection();
+    hideContextMenu();
+}
+
+function handleMenuFormatSelection(e) {
+    if (e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+    }
+    lastMenuActionTime = Date.now();
     hideContextMenu();
     openMindmapFormatDialog();
 }
 
-function handleMenuCopy() {
+function handleMenuCopy(e) {
+    if (e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+    }
+    lastMenuActionTime = Date.now();
     copySelectedMindmapElements();
     hideContextMenu();
 }
 
-function handleMenuPaste() {
+function handleMenuPaste(e) {
+    if (e) {
+        if (e.stopPropagation) e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+    }
+    lastMenuActionTime = Date.now();
     if (contextMenuTarget && contextMenuTarget.type === 'background') {
         const vpX = (contextMenuTarget.x - viewState.x) / viewState.zoom;
         const vpY = (contextMenuTarget.y - viewState.y) / viewState.zoom;
@@ -330,6 +362,7 @@ function showMenuAt(x, y) {
 }
 
 function hideContextMenu() {
+    lastMenuActionTime = Date.now();
     if (contextMenu) contextMenu.style.display = 'none';
 }
 
@@ -352,8 +385,20 @@ function init() {
     // Initialize Viewport Center
     centerViewport();
 
+    // Prevent menu interactions from bubbling and triggering outside deselect
+    if (contextMenu) {
+        ['click', 'mousedown', 'pointerdown'].forEach(evt => {
+            contextMenu.addEventListener(evt, e => {
+                e.stopPropagation();
+            });
+        });
+    }
+
     // Global click to deselect
     document.addEventListener('click', (e) => {
+        // Shield against synthetic mobile touch fall-through or immediate menu closures
+        if (Date.now() - lastMenuActionTime < 450) return;
+
         if (!e.target.closest('.mindmap-node') &&
             !e.target.closest('.connection-group') &&
             !e.target.closest('.connection-label') &&
@@ -361,7 +406,7 @@ function init() {
             !e.target.closest('.context-menu') &&
             !e.target.closest('.modal-overlay') &&
             !e.target.closest('.selection-bar')) {
-            if (!e.ctrlKey && !e.metaKey) {
+            if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
                 clearSelection();
             }
             linkingNodeId = null;
@@ -1868,7 +1913,7 @@ function renderNode(node) {
         // Dragging Logic - ONLY attach once
         makeDraggable(el, node.id);
 
-        const handles = ['tl', 'tr', 'bl'];
+        const handles = ['tl', 'tr', 'bl', 'br'];
         handles.forEach(pos => {
             const h = document.createElement('div');
             h.className = `resize-handle handle-${pos}`;
@@ -1899,7 +1944,7 @@ function renderNode(node) {
 
         // Context Menu (Desktop)
         el.addEventListener('contextmenu', (e) => {
-            if (e.ctrlKey || e.metaKey) {
+            if (e.ctrlKey || e.metaKey || e.shiftKey) {
                 e.preventDefault();
                 e.stopPropagation();
                 toggleNodeSelection(node.id);
@@ -2098,6 +2143,7 @@ function makeDraggable(el, id) {
 
 
     const header = el; // Drag entire element
+    let ctrlDownOnStart = false;
 
     // Mouse Events
     header.addEventListener('mousedown', (e) => {
@@ -2109,12 +2155,7 @@ function makeDraggable(el, id) {
 
         if (e.button !== 0) return;
 
-        if (e.ctrlKey || e.metaKey) {
-            e.stopPropagation();
-            toggleNodeSelection(id);
-            return;
-        }
-
+        ctrlDownOnStart = !!(e.ctrlKey || e.metaKey || e.shiftKey);
         dragStart(e.clientX, e.clientY);
         e.stopPropagation(); // Prevent viewport panning
     });
@@ -2128,14 +2169,20 @@ function makeDraggable(el, id) {
 
         e.stopPropagation();
 
-        if (e.ctrlKey || e.metaKey) return;
+        if (hasDragged) return;
 
-        if (!hasDragged) {
-            if (selectedNodes.size > 1 && selectedNodes.has(id)) {
-                return;
-            }
-            selectNode(id, false);
+        const isMulti = e.ctrlKey || e.metaKey || e.shiftKey || ctrlDownOnStart;
+        ctrlDownOnStart = false;
+
+        if (isMulti) {
+            toggleNodeSelection(id);
+            return;
         }
+
+        if (selectedNodes.size > 1 && selectedNodes.has(id)) {
+            return;
+        }
+        selectNode(id, false);
     });
 
     window.addEventListener('mousemove', (e) => {
@@ -2282,6 +2329,8 @@ function makeResizable(handle, id, pos) {
     const resizeEnd = () => {
         if (!isResizing) return;
         isResizing = false;
+        renderConnections();
+        updateAllCollapseButtons();
         saveAppState();
     };
 
@@ -2315,6 +2364,12 @@ function makeResizable(handle, id, pos) {
     }, { passive: false });
 
     window.addEventListener('touchend', (e) => {
+        if (isResizing) {
+            resizeEnd();
+        }
+    });
+
+    window.addEventListener('touchcancel', (e) => {
         if (isResizing) {
             resizeEnd();
         }
@@ -2397,7 +2452,7 @@ function renderConnections() {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.setAttribute('class', 'connection-group' + (isConnSel ? ' selected' : ''));
         group.addEventListener('contextmenu', (e) => {
-            if (e.ctrlKey || e.metaKey) {
+            if (e.ctrlKey || e.metaKey || e.shiftKey) {
                 e.preventDefault();
                 e.stopPropagation();
                 toggleConnectionSelection(conn);
@@ -2409,7 +2464,7 @@ function renderConnections() {
         // Click to select connection
         group.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (e.ctrlKey || e.metaKey) {
+            if (e.ctrlKey || e.metaKey || e.shiftKey) {
                 toggleConnectionSelection(conn);
             } else {
                 if (selectedConnections.size > 1 && selectedConnections.has(connKey)) {
@@ -2500,7 +2555,7 @@ function renderConnections() {
         // Click to select
         label.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (e.ctrlKey || e.metaKey) {
+            if (e.ctrlKey || e.metaKey || e.shiftKey) {
                 toggleConnectionSelection(conn);
             } else {
                 selectConnection(conn, false);

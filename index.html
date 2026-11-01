@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="Lerntoolbox">
 
     <title>Lerntoolbox</title>
-    <link rel="stylesheet" href="style.css?v=0.10.5">
+    <link rel="stylesheet" href="style.css?v=0.10.6">
     <link rel="stylesheet" href="css/digiboard.css">
 
 
@@ -215,7 +215,7 @@
         </div>
 
         <div style="margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem; text-align: left;">
-            <p>&copy; 2026 mrgoldsmitt <span style="font-size: 0.85em; opacity: 0.7; margin-left: 4px;">v.0.10.5</span>
+            <p>&copy; 2026 mrgoldsmitt <span style="font-size: 0.85em; opacity: 0.7; margin-left: 4px;">v.0.10.6</span>
             </p>
             <div style="font-size: 0.75rem; margin-bottom: 0.4rem;">
                 <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.de" target="_blank" rel="noopener noreferrer" style="color: var(--text-muted); text-decoration: underline;" title="Creative Commons Namensnennung - Nicht-kommerziell 4.0 International">CC BY-NC 4.0 Lizenz</a>
@@ -289,7 +289,7 @@
             </svg>
             Umbenennen
         </div>
-        <div class="menu-item" id="menu-toggle-selection" onclick="handleMenuToggleSelection()">
+        <div class="menu-item" id="menu-toggle-selection" onclick="handleMenuToggleSelection(event)">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
                 stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
                 <polyline points="9 11 12 14 22 4"></polyline>
@@ -297,7 +297,7 @@
             </svg>
             <span id="menu-toggle-selection-label">Zur Auswahl hinzufügen</span>
         </div>
-        <div class="menu-item" id="menu-format-selection" onclick="handleMenuFormatSelection()">
+        <div class="menu-item" id="menu-format-selection" onclick="handleMenuFormatSelection(event)">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
                 stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
                 <circle cx="13.5" cy="6.5" r=".5"></circle>
@@ -310,7 +310,7 @@
             </svg>
             <span id="menu-format-selection-label">Formatieren (Farbe & Größe)...</span>
         </div>
-        <div class="menu-item" id="menu-copy" onclick="handleMenuCopy()">
+        <div class="menu-item" id="menu-copy" onclick="handleMenuCopy(event)">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
                 stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -318,7 +318,7 @@
             </svg>
             <span id="menu-copy-label">Kopieren</span>
         </div>
-        <div class="menu-item" id="menu-paste" onclick="handleMenuPaste()" style="display: none;">
+        <div class="menu-item" id="menu-paste" onclick="handleMenuPaste(event)" style="display: none;">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
                 stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
                 <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
@@ -326,7 +326,7 @@
             </svg>
             Einfügen
         </div>
-        <div class="menu-item" id="menu-clear-selection" onclick="clearSelection(); hideContextMenu();" style="display: none;">
+        <div class="menu-item" id="menu-clear-selection" onclick="handleMenuClearSelection(event)" style="display: none;">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"
                 stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -1987,7 +1987,15 @@
             <div class="card"
                 style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--card-border); max-height: 70vh; overflow-y: auto;">
 
-                <h3 style="color: var(--primary); margin-top: 0;">Version 0.10.5</h3>
+                <h3 style="color: var(--primary); margin-top: 0;">Version 0.10.6</h3>
+                <ul
+                    style="margin-bottom: 1.5rem; list-style-type: disc; margin-left: 1.5rem; color: var(--text-muted);">
+                    <li><strong>Behebung Mindmap-Größenspeicherung (Desktop &amp; Mobil):</strong> Ursache für das Zurückspringen von Knotengrößen beim Speichern behoben: Nach dem Speichern in der Cloud wurde das Projekt durch eine Neuladefunktion versehentlich mit veralteten Daten überschrieben. Nun wird das Mindmap-Projekt synchron gespeichert, ohne den aktiven Arbeitsstand im Canvas zu verwerfen oder zurückzusetzen. Auch für nicht angemeldete Benutzer wird der Zustand beim Klick auf „Speichern“ zuverlässig lokal gesichert.</li>
+                    <li><strong>Behebung Touch-Mehrfachauswahl &amp; Klick-Schutz:</strong> Auf Mobilgeräten und Touchscreens führte das Schließen des Kontextmenüs zu synthetischen Klick-Ereignissen auf den darunterliegenden Hintergrund, wodurch die Auswahl sofort wieder aufgehoben wurde. Ein Klick-Schutzschild (Event-Propagation-Stop und temporäre Klick-Sperre) stellt sicher, dass „Zur Auswahl hinzufügen“ und „Aus Auswahl entfernen“ auf Touchscreens dauerhaft aktiv bleiben.</li>
+                    <li><strong>Verbesserte Tastatur-Mehrfachauswahl &amp; Resize-Handles:</strong> Desktop-Mehrfachauswahl unterstützt nun neben <code>Strg</code> (Windows) und <code>Cmd</code> (Mac) auch die <code>Umschalttaste</code> (Shift) bei Klick und Kontextmenü. Zudem wurde der Verbindungspunkt (Port) an die rechte Kantenmitte verlegt und ein dedizierter Resize-Handle unten rechts (<code>br</code>) hinzugefügt, sodass alle vier Ecken und Kanten auf Desktop und Mobilgeräten frei und intuitiv bedienbar sind.</li>
+                </ul>
+
+                <h3>Version 0.10.5</h3>
                 <ul
                     style="margin-bottom: 1.5rem; list-style-type: disc; margin-left: 1.5rem; color: var(--text-muted);">
                     <li><strong>Verbesserung Mindmap-Mehrfachauswahl (Desktop &amp; Touch):</strong> Robuste Mehrfachauswahl auf Desktop (<code>Strg</code>/<code>Ctrl</code> unter Windows bzw. <code>Cmd</code>/<code>Control</code> auf dem Mac + Linksklick) und auf Touchscreens (langes Drücken für Kontextmenü „Zur Auswahl hinzufügen“ / „Aus Auswahl entfernen“). Klicks auf bereits markierte Knoten verwerfen die restliche Auswahl nicht mehr. Unterdrückung synthetischer Touch-Klicks verhindert das versehentliche Schließen des Menüs beim Finger-Heben. Deutliche optische Markierung durch soliden Rahmen und Checkmark-Badge.</li>
@@ -2824,7 +2832,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="js/qrcode.min.js"></script>
     <script src="js/qrcode_tool.js"></script>
-    <script src="script.js?v=0.10.5"></script>
+    <script src="script.js?v=0.10.6"></script>
 
     <!-- DigiBoard Scripts (Non-Module for file:// support) -->
     <script src="js/digiboard/widgets/BaseWidget.js"></script>
@@ -2933,7 +2941,7 @@
         </div>
     </div>
 
-    <script src="js/cloud-sync.js"></script>
+    <script src="js/cloud-sync.js?v=0.10.6"></script>
 </body>
 
 </html>
