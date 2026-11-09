@@ -1,12 +1,15 @@
 {
   "name": "lerntoolbox",
-  "version": "0.10.6",
+  "version": "0.11.0",
   "description": "Digitale Lernplattform für Schule und Unterricht (Mindmap, Kanban, Flashcards, Entschuldigungen, Digiboard)",
   "main": "script.js",
+  "type": "module",
   "scripts": {
     "dev": "wrangler pages dev .",
     "deploy": "wrangler pages deploy . --project-name lerntoolbox",
-    "db:migrate": "wrangler d1 execute lerntoolbox-db --file=./schema.sql --remote"
+    "db:migrate": "wrangler d1 execute lerntoolbox-db --file=./schema.sql --remote",
+    "token:create": "node scripts/create-token.js",
+    "backup": "node scripts/backup.js"
   },
   "keywords": [
     "education",

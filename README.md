@@ -1,7 +1,7 @@
 # Lerntoolbox
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
-[![Release](https://img.shields.io/badge/Release-v0.10.6-green.svg)](https://github.com/mrgoldsmitt/lerntoolbox/releases)
+[![Release](https://img.shields.io/badge/Release-v0.11.0-green.svg)](https://github.com/mrgoldsmitt/lerntoolbox/releases)
 [![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20PWA-orange.svg)](https://lerntoolbox.mrgoldsmitt.work)
 
 Die **Lerntoolbox** ist eine webbasierte Lern- und Produktivitätsplattform, die speziell für den Einsatz im Schulunterricht, für Lehrkräfte sowie für Lernende entwickelt wurde. Sie bietet interaktive Werkzeuge zur Strukturierung, Visualisierung und Organisation von Lerninhalten – komplett responsiv, datensparsam und mit voller Offline-Unterstützung (Progressive Web App).
@@ -11,7 +11,7 @@ Die **Lerntoolbox** ist eine webbasierte Lern- und Produktivitätsplattform, die
 ## 🛠️ Enthaltene Werkzeuge
 
 - **🧠 Mindmap:** Visuelles Brainstorming und Wissensstrukturierung mit Knoten, Verknüpfungen und XML-Export.
-- **📋 Kanban-Board:** Aufgaben- und Projektmanagement mit flexiblen Spalten und Drag-and-Drop.
+- **📋 Kanban-Board:** Aufgaben- und Projektmanagement mit flexiblen Spalten, Drag-and-Drop sowie direkter KI-Steuerung über das **Model Context Protocol (MCP)**.
 - **🃏 Flashcards (Karteikarten):** Interaktives Vokabel- und Begriffslernen mit Selbsteinschätzung und Exportfunktion.
 - **📝 Entschuldigungs-Generator:** Automatisierte Erstellung formgerechter Entschuldigungsschreiben mit digitalem Unterschriften-Feld und PDF-Export.
 - **📟 Digiboard (Klassenzimmer-Dashboard):** Interaktive Tafel-Widgets (Ampel, Timer, Würfel, Zufallsgenerator, Uhr, Textnotizen, Zeichenfeld).

@@ -12,18 +12,19 @@ tags:
   - domain/education
   - license/cc-by-nc-4.0
 type: web-application-architecture
-version: "0.10.6"
+version: "0.11.0"
 status: production-ready
 stack:
   frontend: "Vanilla HTML5, CSS3, JavaScript (SPA, PWA Offline-First)"
   backend: "Cloudflare Pages Functions (Serverless Edge Workers)"
   database: "Cloudflare D1 (Serverless SQLite)"
+  mcp: "Model Context Protocol Server (@modelcontextprotocol/sdk, Node.js)"
   hosting: "Cloudflare Pages (https://lerntoolbox.mrgoldsmitt.work)"
   license: "Creative Commons Namensnennung - Nicht-kommerziell 4.0 International (CC BY-NC 4.0)"
 repository_path: "/Users/mrgoldsmitt/Projekte/Lerntoolbox/lerntoolbox"
 github: "https://github.com/mrgoldsmitt/lerntoolbox"
 created_date: 2026-08-16
-last_updated: 2026-11-01
+last_updated: 2026-11-09
 ---
 
 # 📖 Lerntoolbox: Technische Gesamtdokumentation & Architektur
@@ -63,12 +64,13 @@ Das Schema befindet sich in `schema.sql` und umfasst:
 | `users` | Registrierte Benutzer | `id` (UUID), `email`, `password_hash`, `birth_date`, `created_at` |
 | `sessions` | Aktive Login-Sitzungen | `id`, `user_id`, `expires_at` |
 | `projects` | Cloud-Gespeicherte Werkzeug-Daten | `id`, `user_id`, `tool_name`, `project_name`, `data_json`, `created_at`, `updated_at` |
+| `api_tokens` | API-Schlüssel für KI / MCP | `id`, `user_id`, `name`, `token_hash`, `scopes`, `created_at`, `expires_at`, `last_used_at` |
 
 ---
 
 ## 4. API Endpunkte (Cloudflare Pages Functions)
 
-Die Backend-Logik liegt unter `/functions/api/`:
+Die Backend-Logik liegt unter `/functions/api/`. Authentifizierung erfolgt wahlweise über Session-Cookies (`lerntoolbox_session`) oder über den Header `Authorization: Bearer <token>`:
 
 | Methode | Endpunkt | Rechte | Beschreibung |
 | :--- | :--- | :--- | :--- |
@@ -78,6 +80,9 @@ Die Backend-Logik liegt unter `/functions/api/`:
 | `POST` | `/api/auth/reset-password`| Alle | Passwort zurücksetzen (via E-Mail & Geburtsdatum) |
 | `GET`  | `/api/auth/me` | Authentifiziert | Aktuellen Benutzer abrufen |
 | `PUT`  | `/api/auth/me` | Authentifiziert | E-Mail-Adresse des Benutzers ändern |
+| `GET`  | `/api/auth/tokens` | Authentifiziert | Aktive API-Tokens des Nutzers auflisten |
+| `POST` | `/api/auth/tokens` | Authentifiziert | Neuen API-Token generieren (Hash in D1 gespeichert) |
+| `DELETE`| `/api/auth/tokens` | Authentifiziert | API-Token widerrufen/löschen |
 | `GET`  | `/api/projects` | Authentifiziert | Alle Projekte des Benutzers auflisten (optional: `?tool=name`) |
 | `POST` | `/api/projects` | Authentifiziert | Neues Projekt anlegen (JSON-Daten) |
 | `GET`  | `/api/projects/:id` | Eigentümer | Ein spezifisches Projekt laden |
@@ -106,11 +111,18 @@ lerntoolbox/
 ├── css/
 │   └── digiboard.css              # Digiboard Widget Styling
 ├── kibildpromptimages/            # Thumbnails für KI-Prompt Stile
+├── mcp-server/                    # Model Context Protocol (MCP) Server für KI-Steuerung (Kanban)
+│   ├── index.js                   # MCP Server Entry Point mit Stdio Transport
+│   ├── kanban-parser.js           # XML/JSON Parser & Manipulator für Kanban-Boards
+│   ├── api-client.js              # REST-Client für Lerntoolbox API (Bearer Auth)
+│   └── tests/                     # Unit- und Live-E2E-Tests
+├── scripts/
+│   └── create-token.js            # CLI-Tool zur Generierung von API-Tokens
 └── functions/
     └── api/                       # Cloudflare Pages Functions (Edge Backend)
-        ├── auth/                  # Register, Login, Me, Logout Logik
+        ├── auth/                  # Register, Login, Me, Logout, Tokens Logik
         ├── projects/              # CRUD Endpunkte für Cloud-Projekte
-        └── utils.js               # Hilfsfunktionen (Hashing, UUIDs, Session-Check)
+        └── utils.js               # Hilfsfunktionen (Hashing, UUIDs, Session- & Token-Check)
 ```
 
 ---
@@ -163,6 +175,12 @@ Wenn du als KI an diesem Repository arbeitest, halte dich an folgende Regeln:
 ---
 
 ## 9. Changelog
+
+### Version 0.11.0 (2026-11-09)
+- **Model Context Protocol (MCP) Server**: Offizielle Schnittstelle (`mcp-server/`) zur vollständigen Steuerung der Kanban-Boards über KI-Assistenten (z. B. Antigravity, Claude Desktop). Ermöglicht das Auflisten (`kanban_list_boards`), Abrufen (`kanban_get_board`), Erstellen (`kanban_create_board`), Hinzufügen von Karten (`kanban_add_card`), Verschieben (`kanban_move_card`), Bearbeiten (`kanban_edit_card`) und Löschen (`kanban_delete_card`) in natürlicher Sprache.
+- **Personal Access Tokens (API-Keys) & Bearer Auth**: Neue D1-Tabelle `api_tokens` zur sicheren Speicherung von SHA-256 gehashten API-Tokens. `functions/api/utils.js` unterstützt neben Cookies ab sofort `Authorization: Bearer <token>` für alle Projekt-Endpunkte.
+- **Token-Verwaltung in der Web-App**: Im Account-Modal der Lerntoolbox können Benutzer nun eigene API-Tokens erstellen, einsehen und bei Bedarf widerrufen.
+- **PWA-Cache**: Erhöhung des Cache-Namens im Service Worker auf `lerntoolbox-v28`.
 
 ### Version 0.10.6 (2026-11-01)
 - **Behebung Mindmap-Größenspeicherung (Desktop & Mobil)**: Ursache für das Zurückspringen von Knotengrößen beim Speichern behoben: Nach dem Speichern in der Cloud wurde das Projekt durch eine Neuladefunktion versehentlich mit veralteten Daten überschrieben. Nun wird das Mindmap-Projekt synchron gespeichert, ohne den aktiven Arbeitsstand im Canvas zu verwerfen oder zurückzusetzen. Auch für nicht angemeldete Benutzer wird der Zustand beim Klick auf „Speichern“ zuverlässig lokal gesichert.

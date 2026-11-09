@@ -130,10 +130,116 @@ function openAccountModal() {
     document.getElementById('account-success').style.display = 'none';
     document.getElementById('account-email').value = currentUser ? currentUser.email : '';
     // close burger menu
-    document.getElementById('account-dropdown-menu').style.display = 'none';
+    const menu = document.getElementById('account-dropdown-menu');
+    if (menu) menu.style.display = 'none';
+    loadApiTokens();
 }
 function closeAccountModal() {
     document.getElementById('account-modal').style.display = 'none';
+    const newForm = document.getElementById('new-token-form');
+    if (newForm) newForm.style.display = 'none';
+    const displayBox = document.getElementById('new-token-display');
+    if (displayBox) displayBox.style.display = 'none';
+}
+
+function toggleNewTokenForm() {
+    const form = document.getElementById('new-token-form');
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    if (form.style.display === 'block') {
+        const input = document.getElementById('new-token-name');
+        if (input) {
+            input.value = 'Antigravity MCP';
+            input.focus();
+        }
+    }
+}
+
+async function loadApiTokens() {
+    const listEl = document.getElementById('api-tokens-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.75rem;">Lade Tokens...</div>';
+
+    const { ok, data } = await fetchAPI('/api/auth/tokens');
+    if (!ok || !data.tokens) {
+        listEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.75rem;">Keine Tokens gefunden oder Fehler beim Laden.</div>';
+        return;
+    }
+
+    if (data.tokens.length === 0) {
+        listEl.innerHTML = '<div style="color: var(--text-muted); font-size: 0.75rem;">Noch keine API-Tokens angelegt.</div>';
+        return;
+    }
+
+    let html = '<div style="display: flex; flex-direction: column; gap: 0.4rem;">';
+    data.tokens.forEach(tok => {
+        const createdDate = new Date(tok.created_at).toLocaleDateString('de-DE');
+        const lastUsed = tok.last_used_at ? new Date(tok.last_used_at).toLocaleDateString('de-DE') : 'Nie verwendet';
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); border: 1px solid var(--card-border); padding: 0.35rem 0.5rem; border-radius: 4px;">
+                <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 0.5rem;">
+                    <div style="font-weight: 500; color: var(--text-main); font-size: 0.8rem;">${tok.name}</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted);">Erstellt: ${createdDate} | Genutzt: ${lastUsed}</div>
+                </div>
+                <button class="btn-secondary" style="font-size: 0.7rem; padding: 0.2rem 0.4rem; color: #ef4444;" onclick="deleteApiToken('${tok.id}')" title="Token widerrufen">Löschen</button>
+            </div>
+        `;
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+}
+
+async function submitCreateToken() {
+    const nameInput = document.getElementById('new-token-name');
+    const name = nameInput ? nameInput.value.trim() : 'Antigravity MCP';
+    const errEl = document.getElementById('account-error');
+
+    const { ok, data } = await fetchAPI('/api/auth/tokens', {
+        method: 'POST',
+        body: JSON.stringify({ name: name || 'API Token' })
+    });
+
+    if (ok && data.token) {
+        const displayBox = document.getElementById('new-token-display');
+        const valueInput = document.getElementById('created-token-value');
+        if (displayBox && valueInput) {
+            valueInput.value = data.token;
+            displayBox.style.display = 'block';
+        }
+        const form = document.getElementById('new-token-form');
+        if (form) form.style.display = 'none';
+        loadApiTokens();
+    } else {
+        if (errEl) {
+            errEl.innerText = data.error || 'Fehler beim Erstellen des Tokens.';
+            errEl.style.display = 'block';
+        }
+    }
+}
+
+function copyCreatedToken() {
+    const valueInput = document.getElementById('created-token-value');
+    if (!valueInput) return;
+    navigator.clipboard.writeText(valueInput.value).then(() => {
+        const btn = document.getElementById('copy-token-btn');
+        if (btn) {
+            const original = btn.innerText;
+            btn.innerText = 'Kopiert!';
+            setTimeout(() => { btn.innerText = original; }, 2000);
+        }
+    });
+}
+
+async function deleteApiToken(tokenId) {
+    if (!confirm('Möchtest du diesen API-Token wirklich unwiderruflich löschen? Verknüpfte KI-Agenten wie Antigravity können danach nicht mehr zugreifen.')) {
+        return;
+    }
+    const { ok } = await fetchAPI(`/api/auth/tokens?id=${encodeURIComponent(tokenId)}`, {
+        method: 'DELETE'
+    });
+    if (ok) {
+        loadApiTokens();
+    }
 }
 
 // Submit forms

@@ -17,7 +17,7 @@
     <meta name="apple-mobile-web-app-title" content="Lerntoolbox">
 
     <title>Lerntoolbox</title>
-    <link rel="stylesheet" href="style.css?v=0.10.6">
+    <link rel="stylesheet" href="style.css?v=0.11.0">
     <link rel="stylesheet" href="css/digiboard.css">
 
 
@@ -215,7 +215,7 @@
         </div>
 
         <div style="margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem; text-align: left;">
-            <p>&copy; 2026 mrgoldsmitt <span style="font-size: 0.85em; opacity: 0.7; margin-left: 4px;">v.0.10.6</span>
+            <p>&copy; 2026 mrgoldsmitt <span style="font-size: 0.85em; opacity: 0.7; margin-left: 4px;">v.0.11.0</span>
             </p>
             <div style="font-size: 0.75rem; margin-bottom: 0.4rem;">
                 <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.de" target="_blank" rel="noopener noreferrer" style="color: var(--text-muted); text-decoration: underline;" title="Creative Commons Namensnennung - Nicht-kommerziell 4.0 International">CC BY-NC 4.0 Lizenz</a>
@@ -1987,7 +1987,16 @@
             <div class="card"
                 style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--card-border); max-height: 70vh; overflow-y: auto;">
 
-                <h3 style="color: var(--primary); margin-top: 0;">Version 0.10.6</h3>
+                <h3 style="color: var(--primary); margin-top: 0;">Version 0.11.0 (Aktuell)</h3>
+                <ul
+                    style="margin-bottom: 1.5rem; list-style-type: disc; margin-left: 1.5rem; color: var(--text-muted);">
+                    <li><strong>Neu: Model Context Protocol (MCP) &amp; KI-Integration für Kanban:</strong> Offizielle MCP-Schnittstelle zur direkten Steuerung und Pflege von Kanban-Boards über KI-Assistenten (z. B. Antigravity, Claude Desktop). Unterstützt das automatische Auflisten, Erstellen, Bearbeiten, Verschieben und Löschen von Aufgaben und Boards per natürlicher Sprache.</li>
+                    <li><strong>Neu: Personal Access Tokens (API-Keys):</strong> Unterstützung für kryptografisch sichere API-Tokens mit SHA-256-Hashing in Cloudflare D1. Benutzer können im Dialog „Account verwalten“ eigene API-Tokens generieren, einsehen und bei Bedarf widerrufen.</li>
+                    <li><strong>Backend-Erweiterung:</strong> Authentifizierung via <code>Authorization: Bearer &lt;token&gt;</code> für alle Projekt-Endpunkte freigeschaltet.</li>
+                    <li><strong>PWA Service Worker:</strong> Cache auf <code>lerntoolbox-v28</code> aktualisiert.</li>
+                </ul>
+
+                <h3>Version 0.10.6</h3>
                 <ul
                     style="margin-bottom: 1.5rem; list-style-type: disc; margin-left: 1.5rem; color: var(--text-muted);">
                     <li><strong>Behebung Mindmap-Größenspeicherung (Desktop &amp; Mobil):</strong> Ursache für das Zurückspringen von Knotengrößen beim Speichern behoben: Nach dem Speichern in der Cloud wurde das Projekt durch eine Neuladefunktion versehentlich mit veralteten Daten überschrieben. Nun wird das Mindmap-Projekt synchron gespeichert, ohne den aktiven Arbeitsstand im Canvas zu verwerfen oder zurückzusetzen. Auch für nicht angemeldete Benutzer wird der Zustand beim Klick auf „Speichern“ zuverlässig lokal gesichert.</li>
@@ -2832,7 +2841,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="js/qrcode.min.js"></script>
     <script src="js/qrcode_tool.js"></script>
-    <script src="script.js?v=0.10.6"></script>
+    <script src="script.js?v=0.11.0"></script>
 
     <!-- DigiBoard Scripts (Non-Module for file:// support) -->
     <script src="js/digiboard/widgets/BaseWidget.js"></script>
@@ -2935,13 +2944,36 @@
                 <button class="btn-secondary" style="width: 100%; text-align: center;" onclick="closeAccountModal(); openResetPasswordModal();">Passwort zurücksetzen</button>
             </div>
 
+            <div style="margin-bottom: 1.5rem; border-top: 1px solid var(--card-border); padding-top: 1rem;">
+                <h4 style="margin-bottom: 0.5rem; font-size: 0.9rem; display: flex; align-items: center; justify-content: space-between;">
+                    <span>API-Tokens (KI &amp; MCP)</span>
+                    <button class="btn-secondary" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;" onclick="toggleNewTokenForm()">+ Neuer Token</button>
+                </h4>
+                <div id="new-token-form" style="display: none; background: var(--bg-hover, rgba(0,0,0,0.03)); padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 0.75rem; border: 1px solid var(--card-border);">
+                    <div class="form-group" style="display: flex; gap: 0.5rem; margin-bottom: 0;">
+                        <input type="text" id="new-token-name" class="form-input" placeholder="Token-Name (z.B. Antigravity MCP)" style="font-size: 0.85rem;">
+                        <button class="btn-primary" style="font-size: 0.85rem; white-space: nowrap;" onclick="submitCreateToken()">Erstellen</button>
+                    </div>
+                </div>
+                <div id="new-token-display" style="display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.75rem; color: #10b981; font-weight: bold; margin-bottom: 0.25rem;">⚠️ Token kopieren (wird nur einmal angezeigt):</div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" id="created-token-value" readonly style="font-family: monospace; font-size: 0.8rem; width: 100%; background: var(--card-bg); border: 1px solid var(--card-border); padding: 0.25rem 0.5rem; border-radius: 4px;" onclick="this.select()">
+                        <button class="btn-secondary" id="copy-token-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="copyCreatedToken()">Kopieren</button>
+                    </div>
+                </div>
+                <div id="api-tokens-list" style="font-size: 0.8rem; max-height: 160px; overflow-y: auto;">
+                    <div style="color: var(--text-muted); font-size: 0.75rem;">Lade Tokens...</div>
+                </div>
+            </div>
+
             <div class="modal-actions" style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
                 <button class="btn-secondary" onclick="closeAccountModal()">Schließen</button>
             </div>
         </div>
     </div>
 
-    <script src="js/cloud-sync.js?v=0.10.6"></script>
+    <script src="js/cloud-sync.js?v=0.11.0"></script>
 </body>
 
 </html>
