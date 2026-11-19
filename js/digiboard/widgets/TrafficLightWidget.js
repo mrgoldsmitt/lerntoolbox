@@ -3,46 +3,85 @@ window.DigiboardWidgets = window.DigiboardWidgets || {};
 class TrafficLightWidget extends window.DigiboardWidgets.BaseWidget {
     constructor(id, manager) {
         super(id, manager);
-        this.title = "Ampel";
-        this.title = "Ampel";
+        this.baseTitle = 'Ampel';
+        this.title = 'Ampel';
+        this.size = { width: 150, height: 340 };
+        this.minSize = { width: 110, height: 200 };
         this.resizable = true;
-        this.size = { width: 150, height: 400 }; // Taller default
+
+        this.activeLights = {
+            red: false,
+            yellow: false,
+            green: false
+        };
+        this.lightEls = {};
     }
 
     renderContent(container) {
+        container.classList.add('traffic-light-content');
+
         const trafficLight = document.createElement('div');
         trafficLight.className = 'traffic-light';
-        trafficLight.style.width = '100%';
-        trafficLight.style.height = '100%';
-        trafficLight.style.padding = '0'; // Maximieren
-        trafficLight.style.justifyContent = 'space-between';
+        this.trafficLightEl = trafficLight;
 
-        ['red', 'yellow', 'green'].forEach(color => {
-            const lightWrapper = document.createElement('div');
-            lightWrapper.style.flex = '1';
-            lightWrapper.style.display = 'flex';
-            lightWrapper.style.justifyContent = 'center';
-            lightWrapper.style.alignItems = 'center';
-            lightWrapper.style.width = '100%';
+        const labels = { red: 'Rot', yellow: 'Gelb', green: 'Grün' };
+        this.lightEls = {};
 
-            const light = document.createElement('div');
+        ['red', 'yellow', 'green'].forEach((color) => {
+            const light = document.createElement('button');
+            light.type = 'button';
             light.className = `light ${color}`;
-            // Remove fixed size class dependence and use inline/flex
-            light.style.width = 'auto'; // Reset CSS
-            light.style.height = 'auto'; // Reset CSS
-            light.style.aspectRatio = '1/1';
-            light.style.height = '80%';
-            light.style.maxHeight = '100%';
-            light.style.borderRadius = '50%';
+            light.setAttribute('aria-label', `Ampel ${labels[color]}`);
+            light.setAttribute('aria-pressed', String(Boolean(this.activeLights[color])));
+            if (this.activeLights[color]) {
+                light.classList.add('active');
+            }
 
             light.onclick = () => {
-                light.classList.toggle('active');
+                this.activeLights[color] = !this.activeLights[color];
+                light.classList.toggle('active', this.activeLights[color]);
+                light.setAttribute('aria-pressed', String(this.activeLights[color]));
+                this.notifyChange();
             };
-            lightWrapper.appendChild(light);
-            trafficLight.appendChild(lightWrapper);
+
+            this.lightEls[color] = light;
+            trafficLight.appendChild(light);
         });
 
         container.appendChild(trafficLight);
+        this.onResize(this.size.width, this.size.height);
+    }
+
+    onResize(w, h) {
+        if (!this.lightEls) return;
+        const availW = Math.max(60, w - 24);
+        const availH = Math.max(120, h - 64);
+        const diameter = Math.round(Math.max(24, Math.min(availW - 20, (availH - 36) / 3)));
+
+        Object.values(this.lightEls).forEach((el) => {
+            el.style.width = `${diameter}px`;
+            el.style.height = `${diameter}px`;
+        });
+    }
+
+    serialize() {
+        return {
+            ...super.serialize(),
+            activeLights: { ...this.activeLights }
+        };
+    }
+
+    deserialize(data) {
+        super.deserialize(data);
+        if (data.activeLights && typeof data.activeLights === 'object') {
+            ['red', 'yellow', 'green'].forEach((color) => {
+                this.activeLights[color] = Boolean(data.activeLights[color]);
+                if (this.lightEls[color]) {
+                    this.lightEls[color].classList.toggle('active', this.activeLights[color]);
+                    this.lightEls[color].setAttribute('aria-pressed', String(this.activeLights[color]));
+                }
+            });
+        }
     }
 }
 

@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const version = '0.11.0';
+const version = '0.12.0';
 const backupDir = 'L:\\SynologyDrive\\Office\\Arbeit\\01 Schule\\01 Unterrichtsmaterial\\Lerntoolbox\\1 Mit Backend';
 const targetZip = path.join(backupDir, `lerntoolbox_backup v.${version}.zip`);
 

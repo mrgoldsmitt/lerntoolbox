@@ -5,11 +5,15 @@ class BaseWidget {
     constructor(id, manager) {
         this.id = id;
         this.manager = manager;
-        this.title = "Widget";
+        this.baseTitle = 'Widget';
+        this.title = 'Widget';
         this.element = null;
-        this.position = { x: 50, y: 50 };
-        this.size = { width: 300, height: 200 };
-        this.resizable = false;
+        this.titleEl = null;
+        this.contentEl = null;
+        this.position = { x: 24, y: 80 };
+        this.size = { width: 300, height: 220 };
+        this.minSize = { width: 170, height: 140 };
+        this.resizable = true;
     }
 
     /**
@@ -17,14 +21,13 @@ class BaseWidget {
      * @returns {HTMLElement} The widget container
      */
     render() {
-        // Create container
         this.element = document.createElement('div');
-        this.element.id = this.id;
+        this.element.id = String(this.id);
         this.element.className = 'widget-window';
+        this.element.dataset.widgetType = this.constructor.name;
         this.element.style.left = `${this.position.x}px`;
         this.element.style.top = `${this.position.y}px`;
 
-        // Apply initial size
         if (this.size) {
             this.element.style.width = `${this.size.width}px`;
             this.element.style.height = `${this.size.height}px`;
@@ -34,20 +37,37 @@ class BaseWidget {
         const header = document.createElement('div');
         header.className = 'widget-header';
 
-        // Title
         const titleSpan = document.createElement('span');
         titleSpan.className = 'widget-title';
         titleSpan.textContent = this.title;
+        this.titleEl = titleSpan;
         header.appendChild(titleSpan);
 
         // Controls
         const controls = document.createElement('div');
         controls.className = 'widget-controls';
+        controls.addEventListener('pointerdown', (e) => e.stopPropagation());
 
-        // Close Button
+        const dupBtn = document.createElement('button');
+        dupBtn.type = 'button';
+        dupBtn.className = 'widget-btn duplicate';
+        dupBtn.title = 'Fenster duplizieren';
+        dupBtn.setAttribute('aria-label', 'Fenster duplizieren');
+        dupBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+        dupBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (this.manager && typeof this.manager.duplicateWidget === 'function') {
+                this.manager.duplicateWidget(this);
+            }
+        };
+        controls.appendChild(dupBtn);
+
         const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
         closeBtn.className = 'widget-btn close';
-        closeBtn.innerHTML = '&times;'; // Or SVG
+        closeBtn.title = 'Fenster schließen';
+        closeBtn.setAttribute('aria-label', 'Fenster schließen');
+        closeBtn.innerHTML = '&times;';
         closeBtn.onclick = (e) => {
             e.stopPropagation();
             this.close();
@@ -60,6 +80,7 @@ class BaseWidget {
         // Content Container
         const content = document.createElement('div');
         content.className = 'widget-content';
+        this.contentEl = content;
         this.element.appendChild(content);
 
         // Render Child Content
@@ -73,63 +94,130 @@ class BaseWidget {
         return this.element;
     }
 
+    setTitle(newTitle) {
+        this.title = newTitle;
+        if (this.titleEl) {
+            this.titleEl.textContent = newTitle;
+        }
+    }
+
     makeResizable() {
-        const handle = document.createElement('div');
-        handle.className = 'resize-handle';
+        const dirs = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
-        // Style handled in CSS, but ensuring basic positioning here if CSS missing
-        handle.style.position = 'absolute';
-        handle.style.bottom = '0';
-        handle.style.right = '0';
-        handle.style.width = '15px';
-        handle.style.height = '15px';
-        handle.style.cursor = 'se-resize';
-        handle.style.zIndex = '10';
+        dirs.forEach((dir) => {
+            const handle = document.createElement('div');
+            handle.className = `digiboard-resize-handle digiboard-resize-${dir}`;
+            handle.dataset.dir = dir;
 
-        // Add SVG icon for grip
-        handle.innerHTML = '<svg viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)" style="position:absolute;bottom:2px;right:2px;width:12px;height:12px;"><path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM18 18H16V16H18V18ZM14 22H12V20H14V22ZM22 14H20V12H22V14Z"/></svg>';
-
-        this.element.appendChild(handle);
-
-        let startX, startY, startWidth, startHeight;
-
-        const onMouseDown = (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            startX = e.clientX;
-            startY = e.clientY;
-            startWidth = parseInt(document.defaultView.getComputedStyle(this.element).width, 10);
-            startHeight = parseInt(document.defaultView.getComputedStyle(this.element).height, 10);
-
-            document.documentElement.addEventListener('mousemove', onMouseMove, false);
-            document.documentElement.addEventListener('mouseup', onMouseUp, false);
-        };
-
-        const onMouseMove = (e) => {
-            const newWidth = startWidth + e.clientX - startX;
-            const newHeight = startHeight + e.clientY - startY;
-
-            // Min dimensions
-            if (newWidth > 150) {
-                this.element.style.width = newWidth + 'px';
-                this.size.width = newWidth;
-            }
-            if (newHeight > 100) {
-                this.element.style.height = newHeight + 'px';
-                this.size.height = newHeight;
+            if (dir === 'se') {
+                handle.setAttribute('aria-label', 'Größe ändern');
+                handle.title = 'Größe ändern';
+                handle.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM18 18H16V16H18V18ZM14 22H12V20H14V22ZM22 14H20V12H22V14Z"/></svg>';
             }
 
-            if (this.onResize) {
-                this.onResize(this.size.width, this.size.height);
-            }
-        };
+            let dragState = null;
 
-        const onMouseUp = () => {
-            document.documentElement.removeEventListener('mousemove', onMouseMove, false);
-            document.documentElement.removeEventListener('mouseup', onMouseUp, false);
-        };
+            const onPointerDown = (e) => {
+                if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
+                e.stopPropagation();
+                e.preventDefault();
 
-        handle.addEventListener('mousedown', onMouseDown, false);
+                if (this.manager) {
+                    this.manager.bringToFront(this.id);
+                }
+
+                const container = this.manager?.container || this.element.parentElement;
+                const containerW = container ? container.clientWidth : window.innerWidth;
+                const containerH = container ? container.clientHeight : window.innerHeight;
+
+                const rect = this.element.getBoundingClientRect();
+                const computed = document.defaultView.getComputedStyle(this.element);
+
+                dragState = {
+                    pointerId: e.pointerId,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    startLeft: this.position.x,
+                    startTop: this.position.y,
+                    startWidth: parseFloat(computed.width) || rect.width,
+                    startHeight: parseFloat(computed.height) || rect.height,
+                    containerW,
+                    containerH
+                };
+
+                this.element.style.transition = 'none';
+                try {
+                    handle.setPointerCapture(e.pointerId);
+                } catch (_) {
+                    // Ignore if capture is unsupported
+                }
+            };
+
+            const onPointerMove = (e) => {
+                if (!dragState || e.pointerId !== dragState.pointerId) return;
+                e.preventDefault();
+
+                const dx = e.clientX - dragState.startX;
+                const dy = e.clientY - dragState.startY;
+                const { startLeft, startTop, startWidth, startHeight, containerW, containerH } = dragState;
+
+                const minW = Math.min(this.minSize?.width || 160, Math.max(110, containerW - 8));
+                const minH = Math.min(this.minSize?.height || 130, Math.max(110, containerH - 8));
+
+                let newLeft = startLeft;
+                let newTop = startTop;
+                let newWidth = startWidth;
+                let newHeight = startHeight;
+
+                // Horizontal adjustments
+                if (dir.includes('e')) {
+                    const maxW = Math.max(minW, containerW - startLeft);
+                    newWidth = Math.min(Math.max(startWidth + dx, minW), maxW);
+                } else if (dir.includes('w')) {
+                    const rightEdge = startLeft + startWidth;
+                    const desiredLeft = startLeft + dx;
+                    const clampedLeft = Math.max(0, Math.min(desiredLeft, rightEdge - minW));
+                    newLeft = clampedLeft;
+                    newWidth = rightEdge - clampedLeft;
+                }
+
+                // Vertical adjustments
+                if (dir.includes('s')) {
+                    const maxH = Math.max(minH, containerH - startTop);
+                    newHeight = Math.min(Math.max(startHeight + dy, minH), maxH);
+                } else if (dir.includes('n')) {
+                    const bottomEdge = startTop + startHeight;
+                    const desiredTop = startTop + dy;
+                    const clampedTop = Math.max(0, Math.min(desiredTop, bottomEdge - minH));
+                    newTop = clampedTop;
+                    newHeight = bottomEdge - clampedTop;
+                }
+
+                this.setPosition(Math.round(newLeft), Math.round(newTop));
+                this.setSize(Math.round(newWidth), Math.round(newHeight));
+            };
+
+            const onPointerEnd = (e) => {
+                if (!dragState || e.pointerId !== dragState.pointerId) return;
+                try {
+                    if (handle.hasPointerCapture(e.pointerId)) {
+                        handle.releasePointerCapture(e.pointerId);
+                    }
+                } catch (_) {
+                    // Ignore
+                }
+                this.element.style.transition = '';
+                dragState = null;
+                this.notifyChange();
+            };
+
+            handle.addEventListener('pointerdown', onPointerDown);
+            handle.addEventListener('pointermove', onPointerMove);
+            handle.addEventListener('pointerup', onPointerEnd);
+            handle.addEventListener('pointercancel', onPointerEnd);
+
+            this.element.appendChild(handle);
+        });
     }
 
     /**
@@ -137,7 +225,7 @@ class BaseWidget {
      * @param {HTMLElement} container - The content container
      */
     renderContent(container) {
-        container.textContent = "Base Widget Content";
+        container.textContent = 'Base Widget Content';
     }
 
     setPosition(x, y) {
@@ -149,6 +237,28 @@ class BaseWidget {
         }
     }
 
+    setSize(width, height) {
+        this.size.width = width;
+        this.size.height = height;
+        if (this.element) {
+            this.element.style.width = `${width}px`;
+            this.element.style.height = `${height}px`;
+        }
+        if (typeof this.onResize === 'function') {
+            this.onResize(width, height);
+        }
+    }
+
+    notifyChange() {
+        if (this.manager && typeof this.manager.notifyChange === 'function') {
+            this.manager.notifyChange();
+        }
+    }
+
+    destroy() {
+        // Override in subclasses to clean up intervals/timeouts
+    }
+
     close() {
         this.manager.removeWidget(this.id);
     }
@@ -157,28 +267,27 @@ class BaseWidget {
         return {
             type: this.constructor.name,
             id: this.id,
-            x: this.position.x,
-            y: this.position.y,
-            width: this.size.width,
-            height: this.size.height,
-            zIndex: this.element.style.zIndex || 1
+            title: this.title,
+            x: Math.round(this.position.x),
+            y: Math.round(this.position.y),
+            width: Math.round(this.size.width),
+            height: Math.round(this.size.height),
+            zIndex: parseInt(this.element?.style.zIndex, 10) || 10
         };
     }
 
     deserialize(data) {
+        if (data.title && typeof data.title === 'string') {
+            this.setTitle(data.title);
+        }
         if (data.x !== undefined && data.y !== undefined) {
-            this.setPosition(data.x, data.y);
+            this.setPosition(Number(data.x) || 0, Number(data.y) || 0);
         }
         if (data.width && data.height && this.element) {
-            this.size.width = data.width;
-            this.size.height = data.height;
-            this.element.style.width = data.width + 'px';
-            this.element.style.height = data.height + 'px';
-            // Trigger resize callback if exists
-            if (this.onResize) this.onResize(data.width, data.height);
+            this.setSize(Number(data.width) || this.size.width, Number(data.height) || this.size.height);
         }
-        if (data.zIndex) {
-            this.element.style.zIndex = data.zIndex;
+        if (data.zIndex && this.element) {
+            this.element.style.zIndex = String(data.zIndex);
         }
     }
 }

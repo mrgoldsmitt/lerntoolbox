@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lerntoolbox-v28';
+const CACHE_NAME = 'lerntoolbox-v29';
 
 // CRITICAL: These MUST exist for the app to run. Install will fail if these fail.
 const ASSETS_CRITICAL = [
@@ -162,8 +162,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Core Code (script.js, style.css) - Network First to ensure immediate updates
-  const isCoreAsset = event.request.url.includes('script.js') || event.request.url.includes('style.css');
+  // Core Code (script.js, style.css, digiboard) - Network First to ensure immediate updates
+  const isCoreAsset = event.request.url.includes('script.js')
+    || event.request.url.includes('style.css')
+    || event.request.url.includes('digiboard');
   if (isCoreAsset) {
     event.respondWith(
       (async () => {

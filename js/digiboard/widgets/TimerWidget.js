@@ -3,31 +3,41 @@ window.DigiboardWidgets = window.DigiboardWidgets || {};
 class TimerWidget extends window.DigiboardWidgets.BaseWidget {
     constructor(id, manager) {
         super(id, manager);
-        this.title = "Timer";
+        this.baseTitle = 'Timer';
+        this.title = 'Timer';
+        this.size = { width: 320, height: 330 };
+        this.minSize = { width: 200, height: 210 };
+        this.resizable = true;
+
         this.mode = 'timer'; // 'timer' or 'stopwatch'
-        this.timeLeft = 600; // 10 minutes default
+        this.initialDuration = 600;
+        this.timeLeft = 600; // seconds
         this.isRunning = false;
         this.interval = null;
-        this.audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-        this.size = { width: 350, height: 350 }; // Larger default to avoid scrolling
+        this.finishTimeout = null;
     }
 
     renderContent(container) {
+        container.classList.add('timer-widget-content');
+
         // Mode Toggle
         const toggleDiv = document.createElement('div');
-        toggleDiv.style.marginBottom = '1rem';
+        toggleDiv.className = 'timer-mode-row';
 
         const btnTimer = document.createElement('button');
+        btnTimer.type = 'button';
         btnTimer.className = 'btn-secondary';
         btnTimer.textContent = 'Sanduhr';
-        btnTimer.onclick = () => this.setMode('timer', display);
+        btnTimer.onclick = () => this.setMode('timer');
 
         const btnStopwatch = document.createElement('button');
+        btnStopwatch.type = 'button';
         btnStopwatch.className = 'btn-secondary';
         btnStopwatch.textContent = 'Stoppuhr';
-        btnStopwatch.style.marginLeft = '0.5rem';
-        btnStopwatch.onclick = () => this.setMode('stopwatch', display);
+        btnStopwatch.onclick = () => this.setMode('stopwatch');
 
+        this.btnTimer = btnTimer;
+        this.btnStopwatch = btnStopwatch;
         toggleDiv.appendChild(btnTimer);
         toggleDiv.appendChild(btnStopwatch);
         container.appendChild(toggleDiv);
@@ -36,116 +46,244 @@ class TimerWidget extends window.DigiboardWidgets.BaseWidget {
         const display = document.createElement('div');
         display.className = 'timer-display';
         display.textContent = this.formatTime(this.timeLeft);
+        this.displayEl = display;
         container.appendChild(display);
+
+        // Progress Track
+        const track = document.createElement('div');
+        track.className = 'timer-progress-track';
+        const fill = document.createElement('div');
+        fill.className = 'timer-progress-fill';
+        track.appendChild(fill);
+        this.progressTrack = track;
+        this.progressFill = fill;
+        container.appendChild(track);
 
         // Input Controls (for timer)
         const inputs = document.createElement('div');
         inputs.className = 'timer-inputs';
-        inputs.style.display = 'flex';
-        inputs.style.gap = '0.2rem';
-        inputs.style.marginBottom = '1rem';
 
-        const addBtn = (min) => {
+        const addAdjustBtn = (label, deltaSec, isZero = false) => {
             const b = document.createElement('button');
+            b.type = 'button';
             b.className = 'btn-secondary';
-            b.textContent = `+${min}m`;
+            b.textContent = label;
             b.onclick = () => {
-                this.timeLeft += min * 60;
-                display.textContent = this.formatTime(this.timeLeft);
+                this.clearFinishedState();
+                if (isZero) {
+                    this.stop();
+                    this.timeLeft = 0;
+                    this.initialDuration = 0;
+                } else {
+                    this.timeLeft = Math.max(0, this.timeLeft + deltaSec);
+                    if (!this.isRunning) {
+                        this.initialDuration = this.timeLeft;
+                    } else if (this.timeLeft > this.initialDuration) {
+                        this.initialDuration = this.timeLeft;
+                    }
+                }
+                this.updateUI();
+                this.notifyChange();
             };
             return b;
         };
 
-        inputs.appendChild(addBtn(1));
-        inputs.appendChild(addBtn(5));
-        inputs.appendChild(addBtn(10));
-        container.appendChild(inputs);
+        inputs.appendChild(addAdjustBtn('-1m', -60));
+        inputs.appendChild(addAdjustBtn('+30s', 30));
+        inputs.appendChild(addAdjustBtn('+1m', 60));
+        inputs.appendChild(addAdjustBtn('+5m', 300));
+        inputs.appendChild(addAdjustBtn('0', 0, true));
         this.inputsEl = inputs;
+        container.appendChild(inputs);
 
         // Controls
         const controls = document.createElement('div');
         controls.className = 'timer-controls';
 
         const startBtn = document.createElement('button');
+        startBtn.type = 'button';
         startBtn.className = 'btn-primary';
         startBtn.textContent = 'Start';
-        startBtn.onclick = () => this.toggle(startBtn, display);
+        startBtn.onclick = () => this.toggle();
+        this.startBtn = startBtn;
 
         const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
         resetBtn.className = 'btn-secondary';
         resetBtn.textContent = 'Reset';
-        resetBtn.style.marginLeft = '0.5rem';
-        resetBtn.onclick = () => this.reset(startBtn, display);
+        resetBtn.onclick = () => this.reset();
 
         controls.appendChild(startBtn);
         controls.appendChild(resetBtn);
         container.appendChild(controls);
+
+        this.updateModeUI();
+        this.updateUI();
+        this.onResize(this.size.width, this.size.height);
     }
 
-    setMode(mode, display) {
+    updateModeUI() {
+        if (this.btnTimer) {
+            this.btnTimer.setAttribute('aria-pressed', String(this.mode === 'timer'));
+        }
+        if (this.btnStopwatch) {
+            this.btnStopwatch.setAttribute('aria-pressed', String(this.mode === 'stopwatch'));
+        }
+        if (this.inputsEl) {
+            this.inputsEl.style.display = this.mode === 'timer' ? 'flex' : 'none';
+        }
+        if (this.progressTrack) {
+            this.progressTrack.style.display = this.mode === 'timer' ? 'block' : 'none';
+        }
+    }
+
+    updateUI() {
+        if (this.displayEl) {
+            this.displayEl.textContent = this.formatTime(this.timeLeft);
+        }
+        if (this.startBtn) {
+            this.startBtn.textContent = this.isRunning ? 'Pause' : 'Start';
+        }
+        if (this.progressFill && this.mode === 'timer') {
+            const ratio = this.initialDuration > 0
+                ? Math.max(0, Math.min(1, this.timeLeft / this.initialDuration))
+                : 0;
+            this.progressFill.style.width = `${Math.round(ratio * 100)}%`;
+        }
+    }
+
+    setMode(mode) {
+        if (this.mode === mode) return;
         this.mode = mode;
-        this.reset(null, display); // Reset state
+        this.stop();
+        this.clearFinishedState();
         if (mode === 'stopwatch') {
             this.timeLeft = 0;
-            if (this.inputsEl) this.inputsEl.style.display = 'none';
         } else {
+            this.initialDuration = 600;
             this.timeLeft = 600;
-            if (this.inputsEl) this.inputsEl.style.display = 'flex';
         }
-        display.textContent = this.formatTime(this.timeLeft);
+        this.updateModeUI();
+        this.updateUI();
+        this.notifyChange();
     }
 
-    toggle(btn, display) {
+    toggle() {
+        this.clearFinishedState();
         if (this.isRunning) {
-            this.stop(btn);
+            this.stop();
         } else {
-            this.start(btn, display);
+            this.start();
         }
     }
 
-    start(btn, display) {
+    start() {
+        if (this.isRunning) return;
+        if (this.mode === 'timer' && this.timeLeft <= 0) return;
+
+        if (this.mode === 'timer' && this.initialDuration <= 0) {
+            this.initialDuration = this.timeLeft;
+        }
+
         this.isRunning = true;
-        btn.textContent = 'Pause';
+        this.updateUI();
 
         this.interval = setInterval(() => {
             if (this.mode === 'timer') {
-                if (this.timeLeft > 0) {
+                if (this.timeLeft > 1) {
                     this.timeLeft--;
+                    this.updateUI();
                 } else {
-                    this.finish(btn);
-                    return;
+                    this.timeLeft = 0;
+                    this.updateUI();
+                    this.finish();
                 }
             } else {
                 this.timeLeft++;
+                this.updateUI();
             }
-            display.textContent = this.formatTime(this.timeLeft);
         }, 1000);
     }
 
-    stop(btn) {
+    stop() {
         this.isRunning = false;
-        if (btn) btn.textContent = 'Start';
-        clearInterval(this.interval);
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = null;
+        }
+        this.updateUI();
     }
 
-    finish(btn) {
-        this.stop(btn);
-        this.audio.play().catch(e => console.log('Audio error:', e));
-        // Visual alert
-        this.element.style.backgroundColor = '#ef4444';
-        setTimeout(() => this.element.style.backgroundColor = '', 1000);
+    clearFinishedState() {
+        if (this.finishTimeout) {
+            clearTimeout(this.finishTimeout);
+            this.finishTimeout = null;
+        }
+        if (this.element) {
+            this.element.classList.remove('timer-finished');
+        }
     }
 
-    reset(btn, display) {
-        this.stop(btn);
-        this.timeLeft = this.mode === 'timer' ? 600 : 0;
-        display.textContent = this.formatTime(this.timeLeft);
+    playAlarm() {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        try {
+            const ctx = new AudioCtx();
+            const now = ctx.currentTime;
+            [0, 0.22, 0.44].forEach((offset) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, now + offset);
+                gain.gain.setValueAtTime(0.001, now + offset);
+                gain.gain.exponentialRampToValueAtTime(0.22, now + offset + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.18);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + offset);
+                osc.stop(now + offset + 0.19);
+            });
+            setTimeout(() => {
+                ctx.close().catch(() => {});
+            }, 900);
+        } catch (err) {
+            console.log('WebAudio chime skipped:', err);
+        }
+    }
+
+    finish() {
+        this.stop();
+        this.playAlarm();
+        if (this.element) {
+            this.element.classList.add('timer-finished');
+            this.finishTimeout = setTimeout(() => {
+                this.finishTimeout = null;
+                if (this.element) {
+                    this.element.classList.remove('timer-finished');
+                }
+            }, 2500);
+        }
+        this.notifyChange();
+    }
+
+    reset() {
+        this.stop();
+        this.clearFinishedState();
+        if (this.mode === 'timer') {
+            this.timeLeft = this.initialDuration > 0 ? this.initialDuration : 600;
+            if (this.initialDuration <= 0) this.initialDuration = 600;
+        } else {
+            this.timeLeft = 0;
+        }
+        this.updateUI();
+        this.notifyChange();
     }
 
     formatTime(seconds) {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = seconds % 60;
+        const total = Math.max(0, Math.floor(seconds));
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        const s = total % 60;
 
         const mStr = m.toString().padStart(2, '0');
         const sStr = s.toString().padStart(2, '0');
@@ -154,6 +292,41 @@ class TimerWidget extends window.DigiboardWidgets.BaseWidget {
             return `${h}:${mStr}:${sStr}`;
         }
         return `${mStr}:${sStr}`;
+    }
+
+    onResize(w, h) {
+        if (!this.displayEl) return;
+        const size = Math.round(Math.max(24, Math.min(72, Math.min(w * 0.22, (h - 140) * 0.45))));
+        this.displayEl.style.fontSize = `${size}px`;
+    }
+
+    destroy() {
+        this.stop();
+        this.clearFinishedState();
+    }
+
+    serialize() {
+        return {
+            ...super.serialize(),
+            mode: this.mode,
+            timeLeft: this.timeLeft,
+            initialDuration: this.initialDuration
+        };
+    }
+
+    deserialize(data) {
+        super.deserialize(data);
+        if (data.mode === 'timer' || data.mode === 'stopwatch') {
+            this.mode = data.mode;
+        }
+        if (typeof data.initialDuration === 'number' && data.initialDuration >= 0) {
+            this.initialDuration = data.initialDuration;
+        }
+        if (typeof data.timeLeft === 'number' && data.timeLeft >= 0) {
+            this.timeLeft = data.timeLeft;
+        }
+        this.updateModeUI();
+        this.updateUI();
     }
 }
 

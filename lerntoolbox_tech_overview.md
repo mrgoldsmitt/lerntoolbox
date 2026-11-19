@@ -12,7 +12,7 @@ tags:
   - domain/education
   - license/cc-by-nc-4.0
 type: web-application-architecture
-version: "0.11.0"
+version: "0.12.0"
 status: production-ready
 stack:
   frontend: "Vanilla HTML5, CSS3, JavaScript (SPA, PWA Offline-First)"
@@ -24,7 +24,7 @@ stack:
 repository_path: "/Users/mrgoldsmitt/Projekte/Lerntoolbox/lerntoolbox"
 github: "https://github.com/mrgoldsmitt/lerntoolbox"
 created_date: 2026-08-16
-last_updated: 2026-11-09
+last_updated: 2026-11-19
 ---
 
 # 📖 Lerntoolbox: Technische Gesamtdokumentation & Architektur
@@ -49,7 +49,7 @@ Ursprünglich als reine Frontend-App ohne Serveranbindung konzipiert ("Offline F
 - **Backend (API):** Cloudflare Pages Functions (`functions/api/`).
 - **Datenbank:** Cloudflare D1 (SQLite, `schema.sql`).
 - **Hosting & CDN:** Cloudflare Pages.
-- **Offline & PWA:** Service Worker (`sw.js`) mit Cache-Storage API (`lerntoolbox-v22`).
+- **Offline & PWA:** Service Worker (`sw.js`) mit Cache-Storage API (`lerntoolbox-v29`).
 - **Authentifizierung:** `HttpOnly`- und `Secure`-Cookies mit serverseitig generierten Sessions. Passwörter werden per WebCrypto-API (SHA-256) gehasht.
 - **Lizenz:** [Creative Commons Namensnennung - Nicht-kommerziell 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/).
 
@@ -99,7 +99,7 @@ lerntoolbox/
 ├── style.css                      # Globales Styling (Dark/Light Mode, Responsive Design)
 ├── script.js                      # Lokale Logik der Werkzeuge (Mindmap, Kanban, XML-Export, PDF)
 ├── deploy_release.sh              # Automatisches Deployment- & Release-Skript für Cloudflare
-├── sw.js                          # Service Worker mit PWA Cache-Strategie (Cache: lerntoolbox-v22)
+├── sw.js                          # Service Worker mit PWA Cache-Strategie (Cache: lerntoolbox-v29)
 ├── manifest.json                  # PWA Manifest & App-Metadaten
 ├── schema.sql                     # D1 SQLite Datenbankschema
 ├── wrangler.toml                  # Cloudflare Pages & D1 Konfiguration
@@ -175,6 +175,13 @@ Wenn du als KI an diesem Repository arbeitest, halte dich an folgende Regeln:
 ---
 
 ## 9. Changelog
+
+### Version 0.12.0 (2026-11-19)
+- **Fix & Beta-Status für DigiBoard**: Fehlendes `<script src="js/digiboard/Digiboard.js">` in `index.html` ergänzt, Menü-Bug nach Tool-Wechsel behoben und Navi-Icon von Alpha (`#ef4444`) auf Beta (`#f59e0b`) hochgestuft.
+- **Strikte In-App-Einbettung & Themes**: Container (`#digiboard-container`) über `body.digiboard-active` exakt in `.main-content` eingepasst (`isolation: isolate; z-index: 1`), Textbearbeitung auf Touch/iOS wiederhergestellt, lokale Web-Audio-API-Signalisierung im Timer ergänzt und CSS-Variablen für alle 4 Themes (Dunkel, Hell, Grau, Dunkelgrau) hinterlegt.
+- **Universelles Resizing & Mehrfach-Instanzen**: Alle 8 Widgets per Pointer-Events an allen 8 Kanten/Ecken frei skalierbar (`BaseWidget.makeResizable()`), eindeutige Instanz-IDs (`db-w-...`), automatische Nummerierung, Duplizieren-Button und „Fenster anordnen“.
+- **Widget-Optimierungen & Persistenz**: Vektor-Zeichnen (kein Datenverlust beim Verkleinern), Fokus-stabiler Texteditor, Würfel (1–4 + Summe), Zufallsname („Ohne Wiederholung“), Timer (±Zeit, Fortschrittsbalken, Offline-Chime), Uhr (Digital/Analog + Sekunden) sowie vollständige Auto-Save- und XML-Serialisierung.
+- **PWA-Cache**: Erhöhung des Cache-Namens im Service Worker auf `lerntoolbox-v29` inkl. Network-First für DigiBoard-Dateien.
 
 ### Version 0.11.0 (2026-11-09)
 - **Model Context Protocol (MCP) Server**: Offizielle Schnittstelle (`mcp-server/`) zur vollständigen Steuerung der Kanban-Boards über KI-Assistenten (z. B. Antigravity, Claude Desktop). Ermöglicht das Auflisten (`kanban_list_boards`), Abrufen (`kanban_get_board`), Erstellen (`kanban_create_board`), Hinzufügen von Karten (`kanban_add_card`), Verschieben (`kanban_move_card`), Bearbeiten (`kanban_edit_card`) und Löschen (`kanban_delete_card`) in natürlicher Sprache.

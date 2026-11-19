@@ -502,6 +502,10 @@ window.addEventListener('beforeunload', () => {
 function saveAppState() {
     if (!isAutoSaveActive) return;
 
+    const digiboardWidgets = (window.digiboardApp && typeof window.digiboardApp.getSerializedState === 'function')
+        ? window.digiboardApp.getSerializedState()
+        : (Array.isArray(window.__pendingDigiboardState) ? window.__pendingDigiboardState : null);
+
     const state = {
         currentMode,
         mindmap: {
@@ -532,8 +536,16 @@ function saveAppState() {
         }
     };
 
-    localStorage.setItem('osi_app_state', JSON.stringify(state));
-    console.log('App state saved automatically');
+    if (Array.isArray(digiboardWidgets)) {
+        state.digiboard = { widgets: digiboardWidgets };
+    }
+
+    try {
+        localStorage.setItem('osi_app_state', JSON.stringify(state));
+        console.log('App state saved automatically');
+    } catch (e) {
+        console.warn('Failed to save app state:', e);
+    }
 }
 
 function setupDragAndDrop(containerId, importFn, overlayId) {
@@ -586,6 +598,15 @@ function loadAppState() {
 
     try {
         const state = JSON.parse(savedState);
+
+        // Queue or restore DigiBoard before setMode so initial activation picks it up once
+        if (state.digiboard && Array.isArray(state.digiboard.widgets)) {
+            if (window.digiboardApp && window.digiboardApp.initialized && window.digiboardApp.manager) {
+                window.digiboardApp.manager.deserializeWidgets(state.digiboard.widgets);
+            } else {
+                window.__pendingDigiboardState = state.digiboard.widgets;
+            }
+        }
 
         // Restore Mode
         if (state.currentMode) {
@@ -1398,11 +1419,16 @@ function setMode(mode, silent = false) {
         }
     }
 
-    // Close any open menus (e.g. Digiboard mobile menu) to prevent overlap on new section screens
-    document.querySelectorAll('.burger-dropdown, .digiboard-dropdown').forEach(el => {
+    // Close any open menus to prevent overlap on new section screens
+    document.querySelectorAll('.burger-dropdown').forEach(el => {
         el.style.display = 'none';
         el.classList.remove('active');
     });
+    if (window.digiboardApp && typeof window.digiboardApp.closeMenu === 'function') {
+        window.digiboardApp.closeMenu();
+    }
+
+    document.body.classList.toggle('digiboard-active', mode === 'digiboard');
 
     // Sections
     document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
@@ -1432,8 +1458,13 @@ function setMode(mode, silent = false) {
         document.getElementById('prompt-section').classList.add('active');
     } else if (mode === 'digiboard') {
         document.getElementById('digiboard-section').classList.add('active');
-        if (window.digiboardApp && !window.digiboardApp.initialized) {
-            window.digiboardApp.init();
+        if (window.digiboardApp) {
+            if (!window.digiboardApp.initialized) {
+                window.digiboardApp.init();
+            }
+            if (typeof window.digiboardApp.onActivate === 'function') {
+                window.digiboardApp.onActivate();
+            }
         }
     } else if (mode === 'entschuldigungen') {
         document.getElementById('entschuldigungen-section').classList.add('active');

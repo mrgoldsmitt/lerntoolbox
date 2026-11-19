@@ -17,8 +17,8 @@
     <meta name="apple-mobile-web-app-title" content="Lerntoolbox">
 
     <title>Lerntoolbox</title>
-    <link rel="stylesheet" href="style.css?v=0.11.0">
-    <link rel="stylesheet" href="css/digiboard.css">
+    <link rel="stylesheet" href="style.css?v=0.12.0">
+    <link rel="stylesheet" href="css/digiboard.css?v=0.12.0">
 
 
 
@@ -155,7 +155,7 @@
                     </svg>
                     QR-Code-Generator
                 </button>
-                <button class="nav-btn alpha" onclick="setMode('digiboard')">
+                <button class="nav-btn beta" onclick="setMode('digiboard')">
                     <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
                         stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
                         <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
@@ -215,7 +215,7 @@
         </div>
 
         <div style="margin-top: 2rem; color: var(--text-muted); font-size: 0.8rem; text-align: left;">
-            <p>&copy; 2026 mrgoldsmitt <span style="font-size: 0.85em; opacity: 0.7; margin-left: 4px;">v.0.11.0</span>
+            <p>&copy; 2026 mrgoldsmitt <span style="font-size: 0.85em; opacity: 0.7; margin-left: 4px;">v.0.12.0</span>
             </p>
             <div style="font-size: 0.75rem; margin-bottom: 0.4rem;">
                 <a href="https://creativecommons.org/licenses/by-nc/4.0/deed.de" target="_blank" rel="noopener noreferrer" style="color: var(--text-muted); text-decoration: underline;" title="Creative Commons Namensnennung - Nicht-kommerziell 4.0 International">CC BY-NC 4.0 Lizenz</a>
@@ -1277,14 +1277,13 @@
         <!-- DigiBoard Section -->
         <section id="digiboard-section" class="section">
             <div id="digiboard-container">
-                <div class="digiboard-toolbar">
+                <div class="digiboard-toolbar" role="toolbar" focusgroup="toolbar wrap" aria-label="DigiBoard Werkzeuge">
                     <!-- Tools injected by JS -->
                 </div>
-
-                <div id="digiboard-bg-picker"
-                    style="position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 1rem; border-radius: 12px; display: none; gap: 0.5rem; z-index: 2001; align-items: center;">
-                    <!-- Colors injected by JS -->
+                <div id="digiboard-empty-hint" class="digiboard-empty-hint">
+                    Wähle oben ein Werkzeug aus, um ein Fenster auf dem DigiBoard zu öffnen.
                 </div>
+                <p id="digiboard-status" class="sr-only" role="status"></p>
             </div>
         </section>
 
@@ -1987,7 +1986,17 @@
             <div class="card"
                 style="background: var(--card-bg); padding: 1.5rem; border-radius: 1rem; border: 1px solid var(--card-border); max-height: 70vh; overflow-y: auto;">
 
-                <h3 style="color: var(--primary); margin-top: 0;">Version 0.11.0 (Aktuell)</h3>
+                <h3 style="color: var(--primary); margin-top: 0;">Version 0.12.0 (Aktuell)</h3>
+                <ul
+                    style="margin-bottom: 1.5rem; list-style-type: disc; margin-left: 1.5rem; color: var(--text-muted);">
+                    <li><strong>Fix &amp; Status-Upgrade DigiBoard (Alpha → Beta):</strong> Das DigiBoard lädt nun wieder zuverlässig alle Werkzeuge (Zufallsname, Würfel, Zeichnen, Textnotiz, Arbeitssymbol, Ampel, Timer/Stoppuhr, Uhr) und trägt in der Seitenleiste ab sofort den Beta-Status (Orange/Gelb).</li>
+                    <li><strong>Strikte App-Einbettung:</strong> Das DigiBoard bleibt vollständig im Anwendungsbereich zwischen Kopf- und Seitenleiste eingepasst (kein Überlaufen, keine doppelten Scrollbalken, kein Überdecken der App-Navigation). Alle Themes (Dunkel, Hell, Grau, Dunkelgrau) werden sauber unterstützt und der Timer-Alarm läuft komplett lokal über die Web Audio API.</li>
+                    <li><strong>Universelle Fenstergrößen &amp; Mehrfach-Instanzen:</strong> Jedes DigiBoard-Fenster lässt sich nun per Maus und Touch an allen Ecken und Kanten frei vergrößern und verkleinern (inklusive Ampel, Timer, Würfel, Zufallsname und Arbeitssymbol). Alle Werkzeuge können beliebig oft gleichzeitig geöffnet und direkt über die Fensterleiste dupliziert werden.</li>
+                    <li><strong>Vollständige Widget-Optimierung &amp; Persistenz:</strong> Zeichenfläche nutzt skalierbare Vektorstriche (kein Verlust beim Verkleinern) mit Radierer, Pinselgrößen und Rückgängig; Textnotizen erhalten Auswahlfokus bei Formatierungen; Zufallsname bietet „Ohne Wiederholung“; Würfel unterstützt 1–4 Würfel samt Summe; Timer bietet Zeit-Anpassung und Fortschrittsbalken; alle Widgets speichern ihren Zustand im Auto-Save und XML-Export/Import.</li>
+                    <li><strong>PWA Service Worker:</strong> Cache auf <code>lerntoolbox-v29</code> aktualisiert und DigiBoard-Dateien auf Network-First umgestellt.</li>
+                </ul>
+
+                <h3>Version 0.11.0</h3>
                 <ul
                     style="margin-bottom: 1.5rem; list-style-type: disc; margin-left: 1.5rem; color: var(--text-muted);">
                     <li><strong>Neu: Model Context Protocol (MCP) &amp; KI-Integration für Kanban:</strong> Offizielle MCP-Schnittstelle zur direkten Steuerung und Pflege von Kanban-Boards über KI-Assistenten (z. B. Antigravity, Claude Desktop). Unterstützt das automatische Auflisten, Erstellen, Bearbeiten, Verschieben und Löschen von Aufgaben und Boards per natürlicher Sprache.</li>
@@ -2841,19 +2850,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="js/qrcode.min.js"></script>
     <script src="js/qrcode_tool.js"></script>
-    <script src="script.js?v=0.11.0"></script>
+    <script src="script.js?v=0.12.0"></script>
 
     <!-- DigiBoard Scripts (Non-Module for file:// support) -->
-    <script src="js/digiboard/widgets/BaseWidget.js"></script>
-    <script src="js/digiboard/widgets/RandomNameWidget.js"></script>
-    <script src="js/digiboard/widgets/DiceWidget.js"></script>
-    <script src="js/digiboard/widgets/DrawingWidget.js"></script>
-    <script src="js/digiboard/widgets/TextWidget.js"></script>
-    <script src="js/digiboard/widgets/SymbolWidget.js"></script>
-    <script src="js/digiboard/widgets/TrafficLightWidget.js"></script>
-    <script src="js/digiboard/widgets/TimerWidget.js"></script>
-    <script src="js/digiboard/widgets/ClockWidget.js"></script>
-    <script src="js/digiboard/WidgetManager.js"></script>
+    <script src="js/digiboard/widgets/BaseWidget.js?v=0.12.0"></script>
+    <script src="js/digiboard/widgets/RandomNameWidget.js?v=0.12.0"></script>
+    <script src="js/digiboard/widgets/DiceWidget.js?v=0.12.0"></script>
+    <script src="js/digiboard/widgets/DrawingWidget.js?v=0.12.0"></script>
+    <script src="js/digiboard/widgets/TextWidget.js?v=0.12.0"></script>
+    <script src="js/digiboard/widgets/SymbolWidget.js?v=0.12.0"></script>
+    <script src="js/digiboard/widgets/TrafficLightWidget.js?v=0.12.0"></script>
+    <script src="js/digiboard/widgets/TimerWidget.js?v=0.12.0"></script>
+    <script src="js/digiboard/widgets/ClockWidget.js?v=0.12.0"></script>
+    <script src="js/digiboard/WidgetManager.js?v=0.12.0"></script>
+    <script src="js/digiboard/Digiboard.js?v=0.12.0"></script>
     <!-- Auth / Login Modal -->
     <div id="login-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content" style="max-width: 400px;">
@@ -2973,7 +2983,7 @@
         </div>
     </div>
 
-    <script src="js/cloud-sync.js?v=0.11.0"></script>
+    <script src="js/cloud-sync.js?v=0.12.0"></script>
 </body>
 
 </html>
